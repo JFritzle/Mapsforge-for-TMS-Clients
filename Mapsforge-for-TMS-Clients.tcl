@@ -1741,6 +1741,7 @@ proc srv_start {srv} {
     lappend command -d [file normalize ${::dem.folder}]
   }
 
+  lappend command -ct "http11,h2c"
   lappend command -mxq ${::tcp.maxconn}
   lappend command -mxt ${::threads.max}
   lappend command -mit ${::threads.min}
