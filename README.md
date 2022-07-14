@@ -34,7 +34,7 @@ For Java version 8 (or higher), switch branch to _Java8_, navigate to folder _ma
 Windows: Copy downloaded jar file into Mapsforge tile server’s installation folder, e.g. into folder _%programfiles%/MapsforgeSrv_.  
 Linux: Copy downloaded jar file into Mapsforge tile server’s installation folder, e.g. into folder _~/MapsforgeSrv_.  
 Note:  
-Currently Mapsforge tile server version 0.17.1 or higher is required. Previous server versions are no longer supported.  
+Currently Mapsforge tile server version 0.17.4 or higher is required. Previous server versions are no longer supported.  
 
 3. Alternative Marlin rendering engine (optional)  
 [Marlin](https://github.com/bourgesl/marlin-renderer) is an open source Java2D rendering engine optimized for performance.  
@@ -49,8 +49,6 @@ Linux: Install packages _tcl, tcllib, tk_ and _tklib_ using Linux package manage
 
 5.	Mapsforge maps  
 Download Mapsforge maps for example from [openandromaps.org](https://www.openandromaps.org). Each downloaded OpenAndroMaps map archive contains a map file (file extension _.map_). Tile server will render this map file.  
-Note:  
-Mapsforge tile server version 0.17.4 or higher is required for optionally appending built-in Mapsforge world map.
 
 6.	Mapsforge themes  
 Mapsforge themes _Elevate_ and _Elements_ (file extension _.xml_) suitable for OpenAndroMaps are available for download at [openandromaps.org](https://www.openandromaps.org).  
@@ -118,7 +116,7 @@ Mapsforge Tile Server and Hillshading Server have been defined in JOSM preferenc
 * Built-in world map  
 Since the built-in [Mapsforge world map](https://download.mapsforge.org/maps/world/world.map) only shows the coastline, it only serves as a rough overview. Due to map's low resolution, coastlines show inaccurate at high resolution. Because the Mapsforge renderer prefers land on the world map to sea on the selected detailed local map, it may be advisable to disable the built-in world map when rendering coastal regions at high resolution.
 * Hillshading  
-  * When selecting "Hillshading on map", map and hillshading are rendered  into one single map. Flat area gets a medium shade of gray, while slopes get a darker or a brighter shade of gray depending on the angle of incidence of light. Thus map has a shade of gray everywhere.  
+  * When selecting "Hillshading on map", map and hillshading are rendered into one single map. Flat area gets a medium shade of gray, while slopes get a darker or a brighter shade of gray depending on the angle of incidence of light. Thus map has a shade of gray everywhere.  
   
   * When selecting "Hillshading as map", map and hillshading are rendered as two separate maps. Post-processing hillshading, gray value of flat area gets mapped to full transparency, darker gray values get mapped to transparency levels of black, brighter gray values get mapped to transparency levels of white. Thus the flatter the area, the more the original colors of the map shine through. Finally, hillshading can be used as an alpha-transparent overlay for any map.  
 [OpenTopoMap](https://opentopomap.org) uses this same hillshading technique.  
