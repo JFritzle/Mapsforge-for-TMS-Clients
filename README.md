@@ -15,11 +15,8 @@ User settings file is named is named _Mapsforge-for-TMS-Clients.ini_. A template
 
 Resource files are named _Mapsforge-for-TMS-Clients.<locale\>_, where _<locale\>_ matches locale’s 2 lowercase letters ISO 639-1 code. English localized resource file _Mapsforge-for-TMS-Clients.en_ and German localized resource file _Mapsforge-for-TMS-Clients.de_ are provided. Script can be easily localized to any other system’s locale by providing a corresponding resource file using English resource file as a template. 
 
-Screenshot of graphical user interface on Microsoft Windows operating system: 
-![GUI_Windows](https://user-images.githubusercontent.com/62614244/174278344-c261c9ca-dad8-430e-a4f4-c1fff0785e3b.png)
-
-Screenshot of graphical user interface on Linux operating system (Ubuntu):
-![GUI_Linux](https://user-images.githubusercontent.com/62614244/174278382-07a33fa9-7f95-495b-a60b-d189a7fee202.png)
+Screenshot of graphical user interface: 
+![GUI](https://user-images.githubusercontent.com/62614244/174278344-c261c9ca-dad8-430e-a4f4-c1fff0785e3b.png)
 
 ### Installation
 
@@ -39,12 +36,14 @@ Currently Mapsforge tile server version 0.17.4 or higher is required. Previous s
 3. Alternative Marlin rendering engine (optional)  
 [Marlin](https://github.com/bourgesl/marlin-renderer) is an open source Java2D rendering engine optimized for performance.  
 For Java version 11 or higher, open [mapsforgesrv](https://github.com/telemaxx/mapsforgesrv) repository, switch branch to _master_, navigate to folder _mapsforgesrv/libs_ and download jar file(s) _marlin-*.jar_.  
-For Java version 8, open [mapsforgesrv](https://github.com/telemaxx/mapsforgesrv) repository, switch branch to _Java8_, navigate to folder _mapsforgesrv/bin/jars_ready2use_ and download jar file(s) _marlin-*.jar_.  
+For Java version 8, open [mapsforgesrv](https://github.com/telemaxx/mapsforgesrv) repository, switch branch to _Java8_, navigate to folder _mapsforgesrv/libs_ and download jar file(s) _marlin-*.jar_.  
 Windows: Copy downloaded jar file(s) into Mapsforge tile server’s installation folder, e.g. into folder _%programfiles%/MapsforgeSrv_.  
 Linux: Copy downloaded jar file(s) into Mapsforge tile server’s installation folder, e.g. into folder _~/MapsforgeSrv_.  
 
 4.	Tcl/Tk scripting language version 8.6 or higher binaries  
 Windows: Download and install latest stable version of Tcl/Tk. See https://wiki.tcl-lang.org/page/Binary+Distributions for available binary distributions. Recommended distribution is [teclab’s tcltk](https://github.com/teclab-at/tcltk/releases) repository. First select most recent installation file _tcltk86-8.6.x.y.tcl86.Win10.x86_64.tgz_, then press _Download_ button. Unpack zipped tar archive (file extension _.tgz_) into your Tcl/Tk installation folder, e.g. _%programfiles%/Tcl_.  
+Note 1: [7-Zip](https://www.7-zip.org) file archiver/extractor is able to unpack _.tgz_ archives.   
+Note 2: Archives of latest releases for Windows at teclab’s tcltk repository may have file extension _.zip_ while they should have extension _.tgz_. Rename extension to _.tgz_ before unpacking archive.  
 Linux: Install packages _tcl, tcllib, tk_ and _tklib_ using Linux package manager. Package _tklib_ is required for tooltips. (Ubuntu: _apt install tcl tcllib tk tklib_)
 
 5.	Mapsforge maps  
