@@ -1585,19 +1585,18 @@ proc process_start {command process} {
 
   set pid [pid $fd]
   set exe [file tail [lindex $command 0]]
-
-  set mark "\\\[[string toupper $process]\\\]"
-  set    script "if {\[eof $fd\]} {"
-  append script "  close $fd;"
-  append script "  namespace delete $process;"
-  append script "  set ::action 0;"
-  append script "  puti \"[mc m52 $pid $exe]\";"
-  append script "} elseif {\[gets $fd line\] >= 0} {"
-  append script "  puts \"$mark \$line\";"
-  append script "}"
-  fileevent $fd readable $script
-
   puti "[mc m51 $pid $exe]"
+
+  append mark {\[} [string toupper $process] {\]}
+  fileevent $fd readable "
+	if {\[eof $fd\]} {
+	  close $fd;
+	  namespace delete $process;
+	  set ::action 0;
+	  puti \"[mc m52 $pid $exe]\";
+	} else {
+	  while {\[gets $fd line\] >= 0} {puts \"$mark \$line\"};
+	}"
 
 }
 
