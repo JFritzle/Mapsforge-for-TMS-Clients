@@ -16,7 +16,7 @@ User settings file is named is named _Mapsforge-for-TMS-Clients.ini_. A template
 Resource files are named _Mapsforge-for-TMS-Clients.<locale\>_, where _<locale\>_ matches locale’s 2 lowercase letters ISO 639-1 code. English localized resource file _Mapsforge-for-TMS-Clients.en_ and German localized resource file _Mapsforge-for-TMS-Clients.de_ are provided. Script can be easily localized to any other system’s locale by providing a corresponding resource file using English resource file as a template. 
 
 Screenshot of graphical user interface: 
-![GUI](https://github.com/JFritzle/Mapsforge-for-TMS-Clients/assets/62614244/6e4ad32e-2707-4472-970f-78f227574668)
+![GUI](https://github.com/JFritzle/Mapsforge-for-TMS-Clients/assets/62614244/ed3901a4-58e0-48f1-88cc-c83eda1f87af)
 
 ### Installation
 
