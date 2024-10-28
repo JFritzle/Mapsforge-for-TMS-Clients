@@ -112,14 +112,12 @@ URLs to request map tiles and/or hillshading overlay tiles for old server type:
 ```
 scheme://address:mport/zoom/x/y.format
 scheme://address:hport/zoom/x/y.format   
-
 ```
 
 URLs to request map tiles and/or hillshading overlay tiles for new *tasks* server type:  
 ```
 scheme://address:port/zoom/x/y.format?task=Map
 scheme://address:port/zoom/x/y.format?task=Hillshading  
-
 ```
 
 | URL item | description |
@@ -141,7 +139,6 @@ http://127.0.0.1:60816/14/8584/5595.png
 
 http://127.0.0.1:60815/14/8584/5595.png?task=Map
 http://127.0.0.1:60815/14/8584/5595.png?task=Hillshading  
-
 ```
 
 See [Slippy map tilenames](https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames) for tile naming conventions.
