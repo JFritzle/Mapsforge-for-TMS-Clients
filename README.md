@@ -6,6 +6,8 @@ Many map applications do not support local Mapsforge maps out of the box. Prebui
 
 Some of these map applications however, amongst these the Java OpenStreetMap Editor JOSM, are able to handle maps provided as tiles by a [Tile Map Service](https://en.wikipedia.org/wiki/Tile_Map_Service) (TMS), which is mainly used by web mapping servers. To make local Mapsforge maps nevertheless available within these applications, a local tile server can be set up to render these Mapsforge maps and to interact with them via TMS protocol. The corresponding tile server is available at this [mapsforgesrv](https://github.com/telemaxx/mapsforgesrv) repository.  
 
+While old tile server type is capable of rendering only one single set of parameters at a time, the new so-called *tasks* server type is capable of rendering multiple sets of parameters concurrently. Thus, a single *tasks* server instance can replace multiple old server instances.  
+
 ### Graphical user interface
 This project’s intension is to easily let the user interactively and comfortably select the numerous available options of tile server. In addition, option settings as well as position and font size of graphical user interface automatically get saved and restored. Tile server gets started/restarted using these options without need to manually set up any configuration files. 
 
@@ -20,29 +22,30 @@ Screenshot of graphical user interface:
 
 ### Installation
 
-1.	Java runtime environment version 8 or higher   
-Windows: If not yet installed, download and install Java, e.g. from [Oracle](https://www.java.com).  
-Linux: If not yet installed, install Java runtime package using Linux package manager. (Ubuntu: _apt install openjdk-<version\>-jre_ where _<version\>_ is 8 or higher)
+1.	Java runtime environment (JRE) or Java development kit (JDK)   
+Note: While old server type versions exist for JRE version 8 or higher, new *tasks* server type versions require JRE version 11 or higher. Each JDK contains JRE as subset.  
+Windows: If not yet installed, download and install JRE or JDK, e.g. from [Oracle](https://www.java.com) or [Adoptium](https://adoptium.net/de/temurin/releases).  
+Linux: If not yet installed, install JRE or JDK using Linux package manager. (Ubuntu: _apt install openjdk-<version\>-jre_ or _apt install openjdk-<version\>-jdk_ with required or newer _<version\>_)
 
 2.	Mapsforge tile server  
-Open [mapsforgesrv](https://github.com/telemaxx/mapsforgesrv) repository.  
-For Java version 11 or higher, switch branch to _master_, navigate to folder _mapsforgesrv/bin/jars_ready2use_ and download jar file [_mapsforgesrv-fatjar.jar_](https://github.com/telemaxx/mapsforgesrv/raw/master/mapsforgesrv/bin/jars_ready2use/mapsforgesrv-fatjar.jar).  
-For Java version 8 (or higher), switch branch to _Java8_, navigate to folder _mapsforgesrv/bin/jars_ready2use_ and download jar file [_mapsforgesrv4java8.jar_](https://github.com/telemaxx/mapsforgesrv/raw/Java8/mapsforgesrv/bin/jars_ready2use/mapsforgesrv4java8.jar).  
-Same jar files are also provided as assets via [Releases](https://github.com/telemaxx/mapsforgesrv/releases).  
+Open [mapsforgesrv releases](https://github.com/telemaxx/mapsforgesrv/releases).  
+For old server type and JRE version 11 or higher, download most recently released jar file _mapsforgesrv-fatjar.jar_ from   _<release\>\_for\_java11_ assets.  
+For old server type and JRE version 8 (or higher), download most recently released jar file _mapsforgesrv4java8.jar_ from _<release\>\_for\_java8_ assets.  
+For new *tasks* server type and JRE version 11 or higher, download most recently released jar file _mapsforgesrv-fatjar.jar_ from _<release\>\_for\_java11_tasks_ assets.  
 Windows: Copy downloaded jar file into Mapsforge tile server’s installation folder, e.g. into folder _%programfiles%/MapsforgeSrv_.  
 Linux: Copy downloaded jar file into Mapsforge tile server’s installation folder, e.g. into folder _~/MapsforgeSrv_.  
 Note:  
-Currently Mapsforge tile server version 0.17.4 or higher is required. Previous server versions are no longer supported.  
+Currently Mapsforge tile server old server type and new *tasks* server type with server version 0.17.4 or higher is required. Previous server versions are no longer supported.  
 
 3. Alternative Marlin rendering engine (optional, recommended)  
 [Marlin](https://github.com/bourgesl/marlin-renderer) is an open source Java2D rendering engine optimized for performance, replacing the standard built into Java. Download is available at [Marlin-renderer releases](https://github.com/bourgesl/marlin-renderer/releases).  
-For Java version 11 or higher, download jar file _marlin-\*.jar_ from latest _Marlin-renderer \<latest version> for JDK11+_ section's assets.  
-For Java version 8, download both jar files _marlin-\*.jar_ from latest _Marlin-renderer \<latest version> for JDK8_ section's assets.  
+For JRE version 11 or higher, download jar file _marlin-\*.jar_ from latest _Marlin-renderer \<latest version> for JDK11+_ section's assets.  
+For JRE version 8, download both jar files _marlin-\*.jar_ from latest _Marlin-renderer \<latest version> for JDK8_ section's assets.  
 Windows: Copy downloaded jar file(s) into Mapsforge tile server’s installation folder, e.g. into folder _%programfiles%/MapsforgeSrv_.  
 Linux: Copy downloaded jar file(s) into Mapsforge tile server’s installation folder, e.g. into folder _~/MapsforgeSrv_.  
 
 4.	Tcl/Tk scripting language version 8.6 or higher binaries  
-Windows: Download and install latest stable version of Tcl/Tk, currently 8.6.14. See https://wiki.tcl-lang.org/page/Binary+Distributions for available binary distributions. Recommended Windows binary distribution is from [teclab’s tcltk](https://gitlab.com/teclabat/tcltk/-/packages) Windows repository. Select most recent installation file _tcltk86-8.6.14.\<number>.Win10.nightly.\<date>.tgz_. Unpack zipped tar archive (file extension _.tgz_) into your Tcl/Tk installation folder, e.g. _%programfiles%/Tcl_.  
+Windows: Download and install latest stable version of Tcl/Tk, currently 8.6.16. See https://wiki.tcl-lang.org/page/Binary+Distributions for available binary distributions. Recommended Windows binary distribution is from [teclab’s tcltk](https://gitlab.com/teclabat/tcltk/-/packages) Windows repository. Select most recent installation file _tcltk86-8.6.16.\<number>.Win10.nightly.\<date>.tgz_. Unpack zipped tar archive (file extension _.tgz_) into your Tcl/Tk installation folder, e.g. _%programfiles%/Tcl_.  
 Note: [7-Zip](https://www.7-zip.org) file archiver/extractor is able to unpack _.tgz_ archives.  
 Linux: Install packages _tcl, tcllib, tcl-thread, tk_ and _tklib_ using Linux package manager. Since Tcl script now uses threads, package _tcl-thread_ is required. In addition, package _tklib_ is required for using tooltips.  (Ubuntu: _apt install tcl tcllib tcl-thread tk tklib_)
 
@@ -101,6 +104,48 @@ or associate file extension _.tcl_ to Tcl/Tk window shell’s binary _/usr/bin/w
 * Use keyboard keys Ctrl-plus to increase and keyboard keys Ctrl-minus to decrease font size of graphical user interface and/or output console.
 * See output console for tile server’s output.
 
+### URLs for tile requests
+
+The URLs that the TMS client should use to request a tile from the tile server depends on whether the old server type or the new *tasks* server type is used.
+
+URLs to request map tiles and/or hillshading overlay tiles for old server type:  
+```
+scheme://address:mport/zoom/x/y.format
+scheme://address:hport/zoom/x/y.format   
+
+```
+
+URLs to request map tiles and/or hillshading overlay tiles for new *tasks* server type:  
+```
+scheme://address:port/zoom/x/y.format?task=Map
+scheme://address:port/zoom/x/y.format?task=Hillshading  
+
+```
+
+| URL item | description |
+| -----| ----------- |
+| scheme | protocol either *http* or *https* |
+| address | tile server's IP address |
+| mport | tcp port to request map tiles |
+| hport | tcp port to request hillshading overlay tiles |
+| port | tcp port to request map and hillshading overlay tiles |
+| zoom | zoom level of requested tile |
+| x | tile number in x direction (longitude) |
+| y | tile number in y direction (latitude) |
+| format | tile image format *png*, *jpg*, *tif*, *bmp*, ... |
+
+URL examples:
+```
+http://127.0.0.1:60815/14/8584/5595.png
+http://127.0.0.1:60816/14/8584/5595.png
+
+http://127.0.0.1:60815/14/8584/5595.png?task=Map
+http://127.0.0.1:60815/14/8584/5595.png?task=Hillshading  
+
+```
+
+See [Slippy map tilenames](https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames) for tile naming conventions.
+
 ### Example
 
 Screenshot of Java OpenStreetMap Editor JOSM showing Heidelberg (Germany) old town and castle using
@@ -123,7 +168,7 @@ Mapsforge Tile Server and Hillshading Server have been defined in JOSM preferenc
 * Output console  
 While console output of tile server can be informative and helpful to verify what is happening as well as to analyze errors, writing to console costs some performance. Therefore the console should be hidden if not needed. 
 * Built-in world map  
-Since the built-in [Mapsforge world map](https://download.mapsforge.org/maps/world/world.map) only shows the coastline, it only serves as a rough overview. Due to map's low resolution, coastlines show inaccurate at high resolution. Because the Mapsforge renderer prefers land on the world map to sea on the selected detailed local map, it may be advisable to disable the built-in world map when rendering coastal regions at high resolution.
+Since the built-in [Mapsforge world map](https://download.mapsforge.org/maps/world/world.map) only shows the coastline, it only serves as a rough overview. Due to map's low resolution, coastlines show inaccurate at high resolution. Because the Mapsforge renderer prefers land on the world map to sea on the selected detailed local map, it may be advisable to disable the built-in world map when rendering coastal regions at high resolution. In order not to cover an accurate map, the built-in world map has been automatically deactivated at higher zoom levels since tile server version 0.21.3.
 * Hillshading  
   * When selecting "Hillshading on map", map and hillshading are rendered into one single map. Flat area gets a medium shade of gray, while slopes get a darker or a brighter shade of gray depending on the angle of incidence of light. Thus map has a shade of gray everywhere.  
   

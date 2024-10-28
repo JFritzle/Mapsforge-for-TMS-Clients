@@ -62,9 +62,10 @@ x15	"TCP port"
 x16	"TCP accept queue size"
 x17	"Minimum concurrent threads"
 x18	"Maximum concurrent threads"
+x19	"Logging of server requests"
 
 b01	"Start"
-b01t	"After changing settings\npress this 'Start' button again,\nthen force client to clear tile cache\nand/or force client to reload tiles!"
+b01t	"After changing settings\npress this 'Start' button again,\nthen force client to clear tile cache\nand/or force client to reload tiles!\nDouble click forces a server restart."
 b02	"Quit"
 b02t	"Terminate server and quit"
 
