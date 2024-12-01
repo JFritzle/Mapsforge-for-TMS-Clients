@@ -20,6 +20,9 @@ Resource files are named _Mapsforge-for-TMS-Clients.<locale\>_, where _<locale\>
 Screenshot of graphical user interface: 
 ![GUI](https://github.com/JFritzle/Mapsforge-for-TMS-Clients/assets/62614244/ed3901a4-58e0-48f1-88cc-c83eda1f87af)
 
+Please note:  
+Old tile server type has reached end of life and version 0.21.4 is last version released. Further development only takes place on new "tasks" server type. After some grace period, graphical user interface support for the old server type will be dropped. Therefore, an early switch to the new server type is recommended.   
+
 ### Installation
 
 1.	Java runtime environment (JRE) or Java development kit (JDK)   
