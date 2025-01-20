@@ -1,6 +1,10 @@
 # GUI to make Mapsforge maps and themes available to TMS clients
 # ==============================================================
 
+# Important:
+# - Only new "tasks" server type supported!
+# - At least Java version 11 required!
+
 # Notes:
 # - Additional user settings file is mandatory!
 #   Name of file = this script's full path
@@ -154,10 +158,8 @@ if {$tcl_version > 8.6} {
   }
 }
 
-if {$tcl_platform(os) == "Windows NT"} \
-	{lassign {1 1} yb yc}
-if {$tcl_platform(os) == "Linux"} \
-	{lassign {0 2} yb yc}
+if {$tcl_platform(os) == "Windows NT"}	{lassign {1 1} yb yc}
+if {$tcl_platform(os) == "Linux"}	{lassign {0 2} yb yc}
 foreach {item option value} {
 . background $colorBackground
 . bordercolor $colorBorder
@@ -188,16 +190,36 @@ TRadiobutton background {focus $colorFocus}
 Arrow.TButton bordercolor {focus $colorWindowFrame}
 } {style map $item -$option [eval list {*}$value]}
 
-# Global button bindings
+# Global widget bindings
 
 foreach item {TButton TCheckbutton TRadiobutton} \
 	{bind $item <Return> {%W invoke}}
 bind TCombobox <Return> {event generate %W <Button-1>}
+
+bind Entry <FocusIn> {grab %W}
+bind Entry <Tab> {grab release %W}
+bind Entry <Button-1> {button-1-press %W %X %Y}
+
 proc scale_updown {w d} {$w set [expr [$w get]+$d*[$w cget -resolution]]}
 bind Scale <MouseWheel> {scale_updown %W [expr %D>0?+1:-1]}
 bind Scale <Button-4> {scale_updown %W -1}
 bind Scale <Button-5> {scale_updown %W +1}
 bind Scale <Button-1> {+focus %W}
+
+proc button-1-press {W X Y} {
+  set w [winfo containing $X $Y]
+  if {"$w" == "$W"} {focus $W; return}
+  grab release $W
+  if {"$w" == ""} return
+  focus $w
+  switch [winfo class $w] {
+    TCheckbutton -
+    TRadiobutton -
+    TButton	{$w instate !disabled {$w invoke}}
+    TCombobox	{$w instate !disabled {ttk::combobox::Press "" $w \
+		[expr $X-[winfo rootx $w]] [expr $Y-[winfo rooty $w]]}}
+  }
+}
 
 # Bitmap arrow down
 
@@ -215,29 +237,26 @@ image create bitmap ArrowDown -data {
 # is replaced by 2 lowercase letters ISO 639-1 code
 
 set locale [regsub {(.*)[-_]+(.*)} [::msgcat::mclocale] {\1}]
-if {$locale == "c"} {set locale "en"}
+if {$locale == "c"} {set locale en}
 
 set prefix [file rootname $script]
 
-set list {}
-lappend list $locale en
-foreach item [glob -nocomplain -tails -path $prefix. -type f ??] {
-  lappend list [lindex [split $item .] end]
-}
+set list [list $locale en]
+foreach item [glob -nocomplain -tails -path $prefix. -type f ??] \
+	{lappend list [lindex [split $item .] end]}
 
 unset locale
-foreach suffix $list {
-  set file $prefix.$suffix
-  if {[file exists $file]} {
-    if {[catch {source $file} result]} {
-      messagebox -title $title -icon error \
+foreach item $list {
+  set file $prefix.$item
+  if {![file exists $file]} continue
+  if {[catch {source $file} result]} {
+    messagebox -title $title -icon error \
 	-message "Error reading locale file '[file tail $file]':\n$result"
-      exit
-    }
-    set locale $suffix
-    ::msgcat::mclocale $locale
-    break
+    exit
   }
+  set locale $item
+  ::msgcat::mclocale $locale
+  break
 }
 if {![info exists locale]} {
   messagebox -title $title -icon error \
@@ -249,16 +268,13 @@ if {![info exists locale]} {
 # Filename = script's filename where file extension "tcl" is replaced by "ini"
 
 set file [file rootname $script].ini
-
-if {[file exist $file]} {
-  if {[catch {source $file} result]} {
-    messagebox -title $title -icon error \
-	-message "[mc i00 [file tail $file]]:\n$result"
-    exit
-  }
-} else {
+if {![file exist $file]} {
   messagebox -title $title -icon error \
 	-message "[mc i01 [file tail $file]]"
+  exit
+} elseif {[catch {source $file} result]} {
+  messagebox -title $title -icon error \
+	-message "[mc i00 [file tail $file]]:\n$result"
   exit
 }
 
@@ -276,11 +292,11 @@ if {$tcl_platform(os) == "Windows NT"}	{cd $env(SystemDrive)/}
 if {$tcl_platform(os) == "Linux"}	{cd /}
 
 foreach item $list {
-  if {![info exists $item]} {continue}
+  if {![info exists $item]} continue
   set value [set $item]
-  if {$value == ""} {continue}
+  if {$value == ""} continue
   if {$tcl_version >= 9.0} {set value [file tildeexpand $value]}
-  if {[lsearch -exact $cmds $item] != -1} {
+  if {$item in $cmds} {
     set exec [auto_execok $value]
     if {$exec == ""} {
       messagebox -title $title -icon error -message [mc e04 $value $item]
@@ -312,7 +328,7 @@ if {$tcl_platform(os) == "Windows NT"} {
 } elseif {$tcl_platform(os) == "Linux"} {
   if {$language == ""} {
     set language [regsub {(.*)_(.*)} $env(LANG) {\1}]
-    if {$env(LANG) == "C"} {set language "en"}
+    if {$env(LANG) == "C"} {set language en}
   }
   if {![info exists env(TMPDIR)]} {set env(TMPDIR) /tmp}
   set tmpdir $env(TMPDIR)
@@ -341,38 +357,57 @@ set console.font.size 8
 
 set dem.folder ""
 set shading.onoff 0
-set shading.layer "onmap"
+set shading.layer onmap
 set shading.magnitude 1.
-set shading.algorithm "simple"
+set shading.algorithm simple
 set shading.simple.linearity 0.1
 set shading.simple.scale 0.666
 set shading.diffuselight.angle 50.
 set shading.asy.values [list 0.5 0 80 [expr max(1,$nprocs/3)] $nprocs true]
+array set shading.asy.array {}
+set shading.zoom.min.apply false
+set shading.zoom.min.value 9
+set shading.zoom.max.apply false
+set shading.zoom.max.value 17
 
-set tcp_port_srv $tcp_port
-set tcp_port_ovl [incr tcp_port]
-set tcp.port_srv $tcp_port_srv
-set tcp.port_ovl $tcp_port_ovl
+set tcp.port $tcp_port
 set tcp.interface $interface
 set tcp.maxconn 1024
-set threads.min 0
-set threads.max 8
-set log.requests 1
+set log.requests 0
 
-set name_srv "Map"
-set name_ovl "Hillshading"
+# Save/restore settings
 
-foreach item {global hillshading tmsclient} {
-  set fd [open "$ini_folder/$item.ini" a+]
+proc save_settings {file args} {
+  array set save {}
+  set fd [open $file a+]
   seek $fd 0
   while {[gets $fd line] != -1} {
     regexp {^(.*?)=(.*)$} $line "" name value
-    set $name $value
+    set save($name) $value
+  }
+  foreach name $args {set save($name) [set ::$name]}
+  seek $fd 0
+  chan truncate $fd
+  foreach name [lsort [array names save]] {puts $fd $name=$save($name)}
+  close $fd
+}
+
+proc restore_settings {file} {
+  if {![file exists $file]} return
+  set fd [open $file r]
+  while {[gets $fd line] != -1} {
+    regexp {^(.*?)=(.*)$} $line "" name value
+    set ::$name $value
   }
   close $fd
 }
-array set shading.asy.array {}
-set i 0; lmap v ${shading.asy.values} {set shading.asy.array($i) $v; incr i}
+
+# Restore saved settings
+
+foreach item {global hillshading tmsclient} \
+	{restore_settings $ini_folder/$item.ini}
+set i 0
+lmap v ${shading.asy.values} {set shading.asy.array($i) $v; incr i}
 
 # Restore saved font sizes
 
@@ -402,14 +437,16 @@ set ctid [thread::create -joinable "
   thread::wait
   "]
 
-send $ctid {
+proc ctsend {script} "return \[send $ctid \$script\]"
+
+ctsend {
   foreach item {Consolas "Ubuntu Mono" "Noto Mono" "Liberation Mono"
   	[font configure TkFixedFont -family]} {
     set family [lsearch -nocase -exact -inline [font families] $item]
-    if {$family != ""} {break}
+    if {$family != ""} break
   }
   font create font -family $family -size $font_size
-  text .txt -font font -wrap none -setgrid 1 -state disabled \
+  text .txt -font font -wrap none -setgrid 1 -state disabled -undo 0 \
 	-width 120 -xscrollcommand {.sbx set} \
 	-height 24 -yscrollcommand {.sby set}
   ttk::scrollbar .sbx -orient horizontal -command {.txt xview}
@@ -428,7 +465,7 @@ send $ctid {
   bind . <Control-KP_Subtract> {incr_font_size -1}
 
   bind . <Configure> {
-    if {"%W" != "."} {continue}
+    if {"%W" != "."} continue
     scan [wm geometry %W] "%%dx%%d+%%d+%%d" cols rows x y
     set geometry "$x $y $cols $rows"
   }
@@ -438,7 +475,7 @@ send $ctid {
     set py [.txt yview]
     set size [font configure font -size]
     incr size $incr
-    if {$size < 5 || $size > 20} {return}
+    if {$size < 5 || $size > 20} return
     font configure font -size $size
     update idletasks
     .txt xview moveto [lindex $px 0]
@@ -447,11 +484,11 @@ send $ctid {
 
   proc write {text} {
     .txt configure -state normal
-    if {[string index "$text" 0] == "\r"} {
-      set text [string range "$text" 1 end]
+    if {[string index $text 0] == "\r"} {
+      set text [string range $text 1 end]
       .txt delete end-2l end-1l
     }
-    .txt insert end "$text"
+    .txt insert end $text
     .txt configure -state disabled
     .txt see end
   }
@@ -483,7 +520,7 @@ send $ctid {
 }
 
 if {$console != -1} {
-  set fdo [send $ctid "set fdo"]
+  set fdo [ctsend "set fdo"]
   thread::attach $fdo
   fconfigure $fdo -blocking 0 -buffering line -translation lf
   interp alias {} ::cputs {} ::puts $fdo
@@ -493,7 +530,7 @@ if {$console != -1} {
 
 if {$console == 1} {
   set console.show 1
-  send $::ctid "show_hide 1"
+  ctsend "show_hide 1"
 }
 
 # Mark output message
@@ -538,15 +575,15 @@ if {$tcl_platform(os) == "Windows NT" &&
   ([regexp -nocase {^.*/Program Files.*/Common Files/Oracle/Java/.*/java.exe$} $java_cmd]
    || [regexp -nocase {^.*/ProgramData/Oracle/Java/.*/java.exe$} $java_cmd])} {
   set exec ""
-  foreach item {"HKEY_LOCAL_MACHINE\\SOFTWARE\\JavaSoft" \
-		"HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\JavaSoft"} {
+  foreach item {HKEY_LOCAL_MACHINE\\SOFTWARE\\JavaSoft \
+		HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\JavaSoft} {
     foreach key {JRE "Java Runtime Environment" JDK "Java Development Kit"} {
-      if {[catch {registry get "$item\\$key" CurrentVersion} value]} {continue}
-      if {[catch {registry get "$item\\$key\\$value" JavaHome} value]} {continue}
+      if {[catch {registry get $item\\$key CurrentVersion} value]} continue
+      if {[catch {registry get $item\\$key\\$value JavaHome} value]} continue
       set exec [auto_execok "[file normalize $value]/bin/java.exe"]
-      if {$exec != ""} {break}
+      if {$exec != ""} break
     }
-    if {$exec == ""} {continue}
+    if {$exec == ""} continue
     set java_cmd [lindex $exec 0]
     break
   }
@@ -555,7 +592,7 @@ if {$tcl_platform(os) == "Windows NT" &&
 # Get major Java version
 
 set java_version 0
-set java_string "unknown"
+set java_string unknown
 set command [list $java_cmd -version]
 set rc [catch "exec $command 2>@1" result]
 if {!$rc} {
@@ -572,38 +609,36 @@ if {!$rc} {
 
 if {$rc || $java_version == 0} \
   {error_message [mc e08 Java [get_shell_command $command] $result] exit}
+if {$java_version < 11} {error_message [mc e07 Java $java_string 11] exit}
 
-# Evaluate numeric tile server version
-# from output line ending with version string " version: x.y.z[.c]"
+# Evaluate numeric Mapsforge server version
+# from output line ending with version string " version: x.y.z.c"
 
 set server_version 0
-set server_string "unknown"
+set server_string unknown
 set command [list $java_cmd -jar $server_jar -help]
 set rc [catch "exec $command 2>@1" result]
 foreach line [split $result \n] {
-  if {![regexp -nocase {^(?:.* version: )([0-9.]+)$} $line "" data]} {continue}
+  if {![regexp -nocase {^(?:.* version: )([0-9.]+)$} $line "" data]} continue
   set server_string $data
   set data [split $data .]
-  if {[llength $data] == 3} {set server_type 0}
-  if {[llength $data] == 4} {set server_type 1}
-  while {[llength $data] < 4} {lappend data 0}
+  if {[llength $data] != 4} \
+    {error_message [mc e07 "Mapsforge Server" $server_string 0.21.0.0] exit}
   foreach item $data {set server_version [expr 100*$server_version+$item]}
   break
 }
 
 if {$rc || $server_version == 0} \
   {error_message [mc e08 Server [get_shell_command $command] $result] exit}
-
-if {$server_version < 170400} \
-  {error_message [mc e07 $server_string 0.17.4] exit}
+if {$server_version < 210000} \
+  {error_message [mc e07 "Mapsforge Server" $server_string 0.21.0.0] exit}
 
 # Recursively find files
 
 proc find_files {folder pattern} {
   set list [glob -nocomplain -directory $folder -type f $pattern]
-  foreach subfolder [glob -nocomplain -directory $folder -type d *] {
-    lappend list {*}[find_files $subfolder $pattern]
-  }
+  foreach subfolder [glob -nocomplain -directory $folder -type d *] \
+	{lappend list {*}[find_files $subfolder $pattern]}
   return $list
 }
 
@@ -613,7 +648,6 @@ cd $maps_folder
 set maps [find_files "" "*.map"]
 cd $cwd
 set maps [lsort -dictionary $maps]
-
 if {[llength $maps] == 0} {error_message [mc e11] exit}
 
 # Get list of available Mapsforge themes
@@ -622,9 +656,8 @@ if {[llength $maps] == 0} {error_message [mc e11] exit}
 cd $themes_folder
 set themes [find_files "" "*.xml"]
 cd $cwd
-if {$server_version <  200000} {lappend themes "(default)"}
-if {$server_version >= 200000} {lappend themes "(DEFAULT)" "(OSMARENDER)"}
-if {$server_version >= 220000} {lappend themes "(MOTORIDER)" "(MOTORIDER_DARK)"}
+lappend themes (DEFAULT) (OSMARENDER)
+if {$server_version >= 220000} {lappend themes (MOTORIDER) (MOTORIDER_DARK)}
 set themes [lsort -dictionary $themes]
 
 # --- Begin of main window
@@ -636,28 +669,243 @@ font create title_font {*}[font configure TkDefaultFont] \
 label .title -text $title -font title_font -fg blue
 pack .title -expand 1 -fill x
 
-set github "https://github.com/JFritzle/Mapsforge-for-TMS-Clients"
-tooltip .title "$github"
-if {$tcl_platform(platform) == "windows"} {
-  set exec "exec cmd.exe /C START {} $github"
-} elseif {$tcl_platform(os) == "Linux"} {
-  set exec "exec nohup xdg-open $github >/dev/null"
-}
-bind .title <ButtonRelease-1> "catch {$exec}"
+set github https://github.com/JFritzle/Mapsforge-for-TMS-Clients
+tooltip .title $github
+if {$tcl_platform(platform) == "windows"} \
+	{set exec "exec cmd.exe /C START {} $github"}
+if {$tcl_platform(os) == "Linux"} \
+	{set exec "exec nohup xdg-open $github >/dev/null"}
+bind .title <Button-1> "catch {$exec}"
 
 # Menu column
 
 frame .f
 pack .f
 
-# Preferred maps language (2 lowercase letters ISO_639-1 code)
+# Server task(s)
+
+set task.active (default)
+set task.name ${task.active}
+
+lappend task.set (default)
+foreach task [glob -nocomplain -path $ini_folder/ \
+	-type f -tails task.*.ini] \
+	{lappend task.set [regsub {^task.(.*).ini$} $task {\1}]}
+set task.set [lsort -unique ${task.set}]
+
+lappend task.use (default)
+set task.use [lmap task ${task.set} \
+	{if {$task ni ${task.use}} continue;set task}]
+
+labelframe .task -labelanchor w -text "[mc l02]: " -bd 0
+entry .task_name -width 32 -textvariable task.name \
+	-takefocus 1 -highlightthickness 0
+bind .task_name <Return> {task_item_add}
+button .task_post -image ArrowDown -command task_list_post
+pack .task_post -in .task -side right -fill y
+pack .task_name -in .task -side right -fill x -expand 1
+pack .task -in .f -expand 1 -fill x -pady {8 0}
+tooltip .task [mc l02t]
+
+proc task_list_post {} {
+  if {![task_item_add]} return
+
+  set tl .task_list
+  set tn .task_name
+  set lb $tl.listbox
+  set sb $tl.scrollbar
+
+  if {[winfo exists $lb]} {
+    task_list_unpost
+    return
+  }
+
+  set x [winfo rootx $tn]
+  set y [winfo rooty $tn]
+  scan [winfo geometry $tn] "%dx%d" w h
+  incr w [winfo width .task_post]
+  incr y $h
+
+  toplevel $tl -relief flat -bd 0
+  wm withdraw $tl
+  switch -- [tk windowingsystem] {
+    x11 {
+      wm attributes $tl -type combo
+      wm overrideredirect $tl true
+    }
+    win32 {
+      wm overrideredirect $tl true
+      wm attributes $tl -topmost 1
+    }
+  }
+  wm geometry $tl +$x+$y
+  wm minsize $tl $w 0
+
+  set lb $tl.listbox
+  set sb $tl.scrollbar
+  scrollbar $sb -command "$lb yview"
+  set len [llength ${::task.set}]
+  set max 5
+  listbox $lb -selectmode multiple -activestyle underline -bd 0 \
+	-takefocus 1 -exportselection 0 -height [expr min($len,$max)]
+  if {$len > $max} {
+    pack $sb -side right -fill y
+    $lb configure -yscrollcommand "$sb set"
+  }
+  pack $lb -side left -fill x -expand 1
+
+  $lb insert 0 {*}${::task.set}
+  $lb activate 0
+  set i 0
+  foreach v ${::task.set} {
+     if {$v in ${::task.use}} {$lb selection set $i}
+     if {$v == ${::task.name}} {$lb activate $i}
+     incr i
+  }
+
+  bind $lb <Map> {focus -force %W}
+  bind $lb <Delete> task_item_delete
+  bind $lb <Tab> task_item_toggle
+  bind $lb <Key-space> {task_item_toggle;break}
+  bind $lb <Button-1> \
+	{%W activate @%x,%y;task_name_update;task_item_toggle;break}
+  foreach v {<PrevLine> <NextLine>} \
+	{bind $lb <$v> "[bind Listbox <$v>];task_name_update;break"}
+  foreach v {ButtonRelease-3 Escape FocusOut} \
+	{bind $lb <$v> task_list_unpost}
+  bind $tl <Button-1> {button-1-press %W %X %Y}
+
+  wm transient $tl .
+  wm attribute $tl -topmost 1
+  update idletasks
+  wm deiconify $tl
+  raise $tl
+  grab -global $tl
+}
+
+proc task_list_unpost {} {
+  set tl .task_list
+  set lb $tl.listbox
+  set ::task.use {}
+  foreach i [$lb curselection] {lappend ::task.use [$lb get $i]}
+  destroy $tl
+  focus -force .task_name
+}
+
+proc task_name_update {} {
+  set lb .task_list.listbox
+  set i [$lb index active]
+  set v [$lb get $i]
+  if {$v == ${::task.active}} return
+  save_task_settings ${::task.active}
+  set ::task.name $v
+  set ::task.active $v
+  restore_task_settings ${::task.active}
+}
+
+proc task_item_toggle {} {
+  set lb .task_list.listbox
+  set i [$lb index active]
+  set v [$lb get $i]
+  if {$v == "(default)"} return
+  if {$i in [$lb curselection]} {
+    $lb selection clear $i
+  } else {
+    $lb selection set $i
+  }
+}
+
+proc task_item_delete {} {
+  set lb .task_list.listbox
+  set i [$lb index active]
+  set v [$lb get $i]
+  if {$v == "(default)"} return
+  $lb delete $i
+  task_name_update
+  set ::task.set [lreplace ${::task.set} $i $i]
+  set file $::ini_folder/task.$v.ini
+  file delete $file
+  set ::task.active [$lb get active]
+  restore_task_settings ${::task.active}
+}
+
+proc task_item_add {} {
+  set tn .task_name
+  set v [$tn get]
+  set i [lsearch ${::task.set} $v]
+  if {$i != -1} {
+    if {$v == ${::task.active}} {return 1}
+    save_task_settings ${::task.active}
+    set ::task.active $v
+    restore_task_settings ${::task.active}
+  } elseif {[regexp "^\[0-9A-Za-z\]+(\[_.+-\]?\[0-9A-Za-z\]+)*$" $v]} {
+    save_task_settings ${::task.active}
+    set ::task.active $v
+    set ::task.set [lsort [lappend ::task.set $v]]
+    set ::task.use [lsort [lappend ::task.use $v]]
+  } else {
+    error_message [mc l02e $v] return
+    set ::task.name ${::task.active}
+    return 0
+  }
+  return 1
+}
+
+# Save active task settings
+
+proc save_task_settings {task} {
+  lmap {i v} [array get ::shading.asy.array] {lset ::shading.asy.values $i $v}
+  set file $::ini_folder/task.$task.ini
+  file delete $file
+  save_settings $file \
+	maps.language maps.selection maps.world maps.contrast maps.gamma \
+	theme.selection user.scale text.scale symbol.scale line.scale \
+	shading.layer shading.onoff shading.algorithm \
+	shading.simple.linearity shading.simple.scale \
+	shading.diffuselight.angle shading.asy.values \
+	shading.magnitude dem.folder \
+	shading.zoom.min.apply shading.zoom.min.value \
+	shading.zoom.max.apply shading.zoom.max.value
+
+  lassign [get_selected_style_overlays] style.id overlay.ids
+  if {${style.id} != ""} {
+    set fd [open $file a+]
+    puts $fd style.id=${style.id}\noverlay.ids=${overlay.ids}
+    close $fd
+  }
+}
+
+# Restore task settings
+
+proc restore_task_settings {task} {
+  set theme_selection ${::theme.selection}
+  restore_settings $::ini_folder/task.$task.ini
+  set list [.maps_values get 0 end]
+  .maps_values selection clear 0 end
+  foreach item ${::maps.selection} {
+    set i [lsearch -exact $list $item]
+    if {$i != -1} {.maps_values selection set $i}
+  }
+  set i 0
+  lmap v ${::shading.asy.values} {set ::shading.asy.array($i) $v; incr i}
+  update_shading_window
+
+  if {$theme_selection != ${::theme.selection}} {update_theme_styles_overlays}
+  if {[info exists ::style.id]} {
+    set_selected_style_overlays ${::style.id} ${::overlay.ids}
+    unset -nocomplain ::style.id ::overlay.ids
+  }
+  update_overlays_selection
+}
+
+# Preferred maps language (2 lowercase letters ISO 639-1 code)
 
 if {![info exists maps.language]} {set maps.language $language}
-labelframe .lang -labelanchor w -text [mc l11]
+labelframe .lang -labelanchor w -text [mc l11]:
 pack .lang -in .f -expand 1 -fill x -pady 1
 entry .lang_value -textvariable maps.language -width 4 -justify center
 pack .lang_value -in .lang -side right
-tooltip .lang_value [mc l11t]
+tooltip .lang [mc l11t]
 
 .lang_value configure -validate key -vcmd {
   if {%d < 1} {return 1}
@@ -665,20 +913,6 @@ tooltip .lang_value [mc l11t]
   if {![string is lower %S]}  {return 0}
   return 1
 }
-
-# Mapsforge renderer
-# By default: renderer selection is hidden, "database" renderer is forced
-
-set show_renderer 0;		# Valid values: 0=hide, 1=show selection
-labelframe .renderer -labelanchor w -text [mc l12]:
-combobox .renderer_values -width 10 \
-	-validate key -validatecommand {return 0} \
-	-textvariable renderer.name -values {"database" "direct"}
-if {[.renderer_values current] < 0} {.renderer_values current 0}
-pack .renderer_values -in .renderer -side right -anchor e -expand 1
-
-if {$show_renderer} {pack .renderer -in .f -expand 1 -fill x -pady 1} \
-else {.renderer_values current 0}
 
 # Mapsforge map selection
 
@@ -700,9 +934,7 @@ pack .maps_values -in .maps -side left -expand 1 -fill both
 
 foreach map $maps {
   .maps_values insert end $map
-  if {[lsearch -exact ${maps.selection} $map] != -1} {
-    .maps_values selection set end
-  }
+  if {$map in ${maps.selection}} {.maps_values selection set end}
 }
 set selection [.maps_values curselection]
 if {[llength $selection] > 0} {.maps_values see [lindex $selection 0]}
@@ -727,7 +959,7 @@ pack .themes_folder_value -in .themes_folder -expand 1 -fill x
 
 set width 0
 foreach item $themes \
-  {set width [expr max([font measure TkTextFont $item],$width)]}
+	{set width [expr max([font measure TkTextFont $item],$width)]}
 set width [expr $width/[font measure TkTextFont "0"]+1]
 
 labelframe .themes -labelanchor nw -text [mc l17]:
@@ -743,7 +975,7 @@ pack .themes_values -in .themes -expand 1 -fill x
 labelframe .styles -labelanchor nw -text [mc l18]:
 combobox .styles_values -validate key -validatecommand {return 0}
 pack .styles_values -in .styles -expand 1 -fill x
-bind .styles_values <<ComboboxSelected>> switch_overlays_selection
+bind .styles_values <<ComboboxSelected>> update_overlays_selection
 
 # Mapsforge theme overlays selection
 
@@ -799,7 +1031,7 @@ checkbutton .output -text [mc c99] \
 	-variable console.show -command show_hide_console
 
 proc show_hide_console {} {
-  send $::ctid "show_hide ${::console.show}"
+  ctsend "show_hide ${::console.show}"
 }
 
 if {$console != -1} {
@@ -808,7 +1040,7 @@ if {$console != -1} {
 
   # Map/Unmap events are generated by Windows only!
   set tid [thread::id]
-  send $ctid "
+  ctsend "
     wm protocol . WM_DELETE_WINDOW \
 	{thread::send -async $tid {.output invoke}}
     bind . <Unmap> {if {\"%W\" == \".\"} \
@@ -845,6 +1077,7 @@ foreach widget {.overlays .shading .effects .server} {
 proc show_hide_toplevel_window {widget} {
   set onoff [set ::${widget}_show_hide]
   if {$onoff} {
+    resize_toplevel_window $widget
     position_toplevel_window $widget
     scan [wm geometry $widget] "%*dx%*d+%d+%d" x y
     wm transient $widget .
@@ -858,10 +1091,22 @@ proc show_hide_toplevel_window {widget} {
   }
 }
 
+# Recalculate and force toplevel window size
+
+proc resize_toplevel_window {widget} {
+  update idletask
+  lassign [wm minsize $widget] w0 h0
+  set w1 [winfo reqwidth $widget]
+  set h1 [winfo reqheight $widget]
+  if {$w0 == $w1 && $h0 == $h1} return
+  wm minsize $widget $w1 $h1
+  wm maxsize $widget $w1 $h1
+}
+
 # Position toplevel window right/left besides main window
 
 proc position_toplevel_window {widget} {
-  if {![winfo ismapped .]} {return}
+  if {![winfo ismapped .]} return
   update idletasks
   scan [wm geometry .] "%dx%d+%d+%d" width height x y
   if {[tk windowingsystem] == "win32"} {
@@ -897,11 +1142,6 @@ proc position_toplevel_window {widget} {
 # Global toplevel bindings
 
 foreach widget {. .overlays .shading .effects .server} {
-  set focus$widget ""
-  bind $widget <Leave> {if {"%W" == [winfo toplevel %W]} \
-	{set focus%W [focus -displayof %W]}}
-  bind $widget <Enter> {if {"%W" == [winfo toplevel %W]} \
-	{catch "focus ${focus%W}"}}
   bind $widget <Control-plus>  {incr_font_size +1}
   bind $widget <Control-minus> {incr_font_size -1}
   bind $widget <Control-KP_Add>      {incr_font_size +1}
@@ -951,8 +1191,10 @@ proc choose_dem_folder {} {
 
 labelframe .shading.algorithm -labelanchor w -text [mc l83]:
 pack .shading.algorithm -expand 1 -fill x -pady 2
-set list {"simple" "diffuselight"}
-if {$server_version >= 220000} {lappend list "stdasy" "simplasy" "hiresasy"}
+set list {}
+if {$server_version >= 230001} {lappend list adaptasy}
+if {$server_version >= 220000} {lappend list stdasy simplasy hiresasy}
+lappend list simple diffuselight
 combobox .shading.algorithm.values -width 12 \
 	-validate key -validatecommand {return 0} \
 	-textvariable shading.algorithm -values $list
@@ -1003,17 +1245,6 @@ checkbutton .shading.asy.hq -text [mc l885] -variable shading.asy.array(5) \
 grid .shading.asy.hq -row 4 -column 1 -columnspan 2 -sticky we
 grid columnconfigure .shading.asy 1 -weight 1
 
-proc switch_shading_algorithm {} {
-  catch "pack forget .shading.simple .shading.diffuselight .shading.asy"
-  set widget ${::shading.algorithm}
-  if {[regexp {asy$} $widget]} {set widget asy}
-  pack .shading.$widget -after .shading.algorithm \
-	-expand 1 -fill x -pady 1
-}
-
-bind .shading.algorithm.values <<ComboboxSelected>> switch_shading_algorithm
-switch_shading_algorithm
-
 # Hillshading magnitude
 
 labelframe .shading.magnitude -labelanchor w -text [mc l87]:
@@ -1024,49 +1255,100 @@ set .shading.magnitude.value.minmax {0 4 1.}
 tooltip .shading.magnitude.value "0 ≤ [mc l87] ≤ 4"
 pack .shading.magnitude.value -in .shading.magnitude -anchor e -expand 1
 
-# Reset hillshading algorithm parameters
+# Theme's hillshading zoom
 
-button .shading.reset -text [mc b92] -width 8 -command "reset_shading_values"
+frame .shading.zoom
+checkbutton .shading.zoom.min_apply -text [mc l891]: \
+	-variable shading.zoom.min.apply \
+	-onvalue true -offvalue false -command update_shading_zoom_levels
+entry .shading.zoom.min_value -textvariable shading.zoom.min.value \
+	-width 8 -justify right
+set .shading.zoom.min_value.minmax {0 20 9}
+tooltip .shading.zoom.min_value "0 ≤ [mc l891] ≤ 20"
+checkbutton .shading.zoom.max_apply -text [mc l892]: \
+	-variable shading.zoom.max.apply \
+	-onvalue true -offvalue false -command update_shading_zoom_levels
+entry .shading.zoom.max_value -textvariable shading.zoom.max.value \
+	-width 8 -justify right
+set .shading.zoom.max_value.minmax {0 20 17}
+tooltip .shading.zoom.max_value "0 ≤ [mc l892] ≤ 20"
+
+set row 0
+foreach item {min max} {
+  incr row
+  grid .shading.zoom.${item}_apply -row $row -column 1 -sticky we -padx {0 2}
+  grid .shading.zoom.${item}_value -row $row -column 2 -sticky we
+}
+grid columnconfigure .shading.zoom 1 -weight 1
+if {$server_version >= 230002} {pack .shading.zoom -expand 1 -fill x}
+
+# Reset hillshading values
+
+button .shading.reset -text [mc b92] -width 8 -command reset_shading_values
 tooltip .shading.reset [mc b92t]
 pack .shading.reset -pady {5 0}
 
-proc reset_shading_values {} {
-  set list {.shading.simple.value1 .shading.simple.value2 \
-	    .shading.diffuselight.value .shading.magnitude.value}
-  foreach i {0 1 2} {lappend list .shading.asy.value$i}
-  foreach widget $list {
-    set ::[$widget cget -textvariable] [lindex [set ::$widget.minmax] 2]
+proc update_shading_zoom_levels {} {
+  foreach item {shading.zoom.min shading.zoom.max} {
+    if {[set ::$item.apply] == true} {.${item}_value configure -state normal} \
+    else {.${item}_value configure -state disabled}
   }
-  set ::shading.asy.array(5) true
 }
 
-foreach widget {.shading.simple.value1 .shading.simple.value2 \
+proc update_shading_window {} {
+  catch "pack forget .shading.simple .shading.diffuselight .shading.asy"
+  if {${::shading.algorithm} ni [.shading.algorithm.values cget -values]} \
+	{.shading.algorithm.values current 0}
+  set widget ${::shading.algorithm}
+  regsub {.*asy$} $widget {asy} widget
+  pack .shading.$widget -after .shading.algorithm -expand 1 -fill x -pady 1
+  update_shading_zoom_levels
+  resize_toplevel_window .shading
+}
+
+set shading_widgets_float {.shading.simple.value1 .shading.simple.value2 \
 	.shading.diffuselight.value .shading.magnitude.value \
-	.shading.asy.value0} {
-  $widget configure -validate all -vcmd {validate_number %W %V %P " " "float"}
-  bind $widget <Shift-ButtonRelease-1> \
-	{set [%W cget -textvariable] [lindex ${::%W.minmax} 2]}
+	.shading.asy.value0}
+set shading_widgets_int {.shading.asy.value1 .shading.asy.value2 \
+	.shading.zoom.min_value .shading.zoom.max_value}
+
+proc reset_shading_values {} {
+  foreach item [concat $::shading_widgets_float $::shading_widgets_int] \
+	{set ::[$item cget -textvariable] [lindex [set ::$item.minmax] 2]}
+  set ::shading.asy.array(5) true
+  .shading.algorithm.values current 0
+  foreach item {min max} {set ::shading.zoom.$item.apply false}
+  update_shading_window
 }
 
-foreach widget {.shading.asy.value1 .shading.asy.value2} {
-  $widget configure -validate all -vcmd {validate_number %W %V %P " " "int"}
-  bind $widget <Shift-ButtonRelease-1> \
+foreach item $shading_widgets_float {
+  $item configure -validate all -vcmd {validate_number %W %V %P " " float}
+}
+
+foreach item $shading_widgets_int {
+  $item configure -validate all -vcmd {validate_number %W %V %P " " int}
+}
+
+foreach item [concat $shading_widgets_float $shading_widgets_int] {
+  bind $item <Shift-ButtonRelease-1> \
 	{set [%W cget -textvariable] [lindex ${::%W.minmax} 2]}
 }
 
 # Save hillshading settings to folder ini_folder
 
-proc save_shading_settings {} {uplevel #0 {
-  lmap {i v} [array get shading.asy.array] {lset shading.asy.values $i $v}
-  set fd [open "$ini_folder/hillshading.ini" w]
-  foreach name {shading.onoff shading.algorithm \
+proc save_shading_settings {} {
+  lmap {i v} [array get ::shading.asy.array] {lset ::shading.asy.values $i $v}
+  save_settings $::ini_folder/hillshading.ini \
+	shading.onoff shading.algorithm \
 	shading.simple.linearity shading.simple.scale \
 	shading.diffuselight.angle shading.asy.values \
-	shading.magnitude dem.folder} {
-    puts $fd "$name=[set $name]"
-  }
-  close $fd
-}}
+	shading.magnitude dem.folder \
+	shading.zoom.min.apply shading.zoom.min.value \
+	shading.zoom.max.apply shading.zoom.max.value
+}
+
+bind .shading.algorithm.values <<ComboboxSelected>> update_shading_window
+update_shading_window
 
 # --- End of hillshading
 # --- Begin of visual rendering effects
@@ -1105,11 +1387,10 @@ label .effects.line_value -textvariable line.scale -width 4 \
 
 set row 0
 grid .effects.scaling -row $row -column 1 -columnspan 3 -sticky we
-set list {user text symbol}
-if {$server_version >= 210000} {lappend list line}
-foreach item $list {
+foreach item {user text symbol line} {
   incr row
-  grid .effects.${item}_label -row $row -column 1 -sticky w -padx {0 2}
+  grid .effects.${item}_label -row $row -column 1 -sticky w \
+	-padx {0 2} -pady {0 4}
   grid .effects.${item}_scale -row $row -column 2 -sticky we
   grid .effects.${item}_value -row $row -column 3 -sticky e
 }
@@ -1136,7 +1417,8 @@ set row 10
 grid .effects.color -row $row -column 1 -columnspan 3 -sticky we
 foreach item {gamma contrast} {
   incr row
-  grid .effects.${item}_label -row $row -column 1 -sticky w -padx {0 2}
+  grid .effects.${item}_label -row $row -column 1 -sticky w \
+	-padx {0 2} -pady {0 4}
   grid .effects.${item}_scale -row $row -column 2 -sticky we
   grid .effects.${item}_value -row $row -column 3 -sticky e
 }
@@ -1145,7 +1427,7 @@ grid columnconfigure .effects {1 2} -uniform 1
 
 # Reset visual rendering effects
 
-button .effects.reset -text [mc b92] -width 8 -command "reset_effects_values"
+button .effects.reset -text [mc b92] -width 8 -command reset_effects_values
 tooltip .effects.reset [mc b92t]
 grid .effects.reset -row 99 -column 1 -columnspan 3 -pady {5 0}
 
@@ -1190,25 +1472,19 @@ pack .server.jar_value -in .server.jar -expand 1 -fill x
 # Server configuration
 
 label .server.config -text [mc x11]
-pack .server.config -pady {10 5}
+pack .server.config -pady {5 0}
 
 # Rendering engine
 
-if {$java_version <= 8} {
-  set pattern marlin-*-Unsafe
-} elseif {$java_version <= 10} {
-  set pattern marlin-*-Unsafe-OpenJDK9
-} else {
-  set pattern marlin-*-Unsafe-OpenJDK11
-}
+set pattern marlin-*-Unsafe-OpenJDK11
 set engines [glob -nocomplain -tails -type f \
-  -directory [file dirname $server_jar] $pattern.jar]
-lappend engines "(default)"
+	-directory [file dirname $server_jar] $pattern.jar]
+lappend engines (default)
 set engines [lsort -dictionary $engines]
 
 set width 0
 foreach item $engines \
-  {set width [expr max([font measure TkTextFont $item],$width)]}
+	{set width [expr max([font measure TkTextFont $item],$width)]}
 set width [expr $width/[font measure TkTextFont "0"]+1]
 
 labelframe .server.engine -labelanchor nw -text [mc x12]:
@@ -1227,37 +1503,23 @@ if {[llength $engines] > 1} {
 
 labelframe .server.interface -labelanchor w -text [mc x13]:
 combobox .server.interface_values -width 10 \
-	-textvariable tcp.interface -values {"localhost" "all"}
+	-textvariable tcp.interface -values {localhost all}
 if {[.server.interface_values current] < 0} \
 	{.server.interface_values current 0}
-pack .server.interface -expand 1 -fill x -pady {6 1}
+pack .server.interface -expand 1 -fill x -pady {6 2}
 pack .server.interface_values -in .server.interface \
 	-side right -anchor e -expand 1 -padx {3 0}
 
-# Tile server TCP port number
+# Server TCP port number
 
-labelframe .server.port_srv -labelanchor w -text [mc x15]:
-entry .server.port_srv_value -textvariable tcp.port_srv \
+labelframe .server.port -labelanchor w -text [mc x15]:
+entry .server.port_value -textvariable tcp.port \
 	-width 6 -justify center
-set .server.port_srv_value.minmax "1024 65535 $tcp_port_srv"
-tooltip .server.port_srv_value "1024 ≤ [mc x15] ≤ 65535"
-pack .server.port_srv -expand 1 -fill x -pady 1
-pack .server.port_srv_value -in .server.port_srv \
+set .server.port_value.minmax "1024 65535 $tcp_port"
+tooltip .server.port_value "1024 ≤ [mc x15] ≤ 65535"
+pack .server.port -expand 1 -fill x -pady 1
+pack .server.port_value -in .server.port \
 	-side right -anchor e -expand 1 -padx {3 0}
-
-# Overlay server TCP port number
-
-labelframe .server.port_ovl -labelanchor w -text "[mc x15] ([mc c82]):"
-tooltip .server.port_ovl [mc c82t]
-entry .server.port_ovl_value -textvariable tcp.port_ovl \
-	-width 6 -justify center
-set .server.port_ovl_value.minmax "1024 65535 $tcp_port_ovl"
-if {$server_type == 0} {
-tooltip .server.port_ovl_value "1024 ≤ [mc x15] ≤ 65535"
-pack .server.port_ovl -expand 1 -fill x -pady 1
-pack .server.port_ovl_value -in .server.port_ovl \
-	-side right -anchor e -expand 1 -padx {3 0}
-}
 
 # Maximum size of TCP listening queue
 
@@ -1270,59 +1532,26 @@ pack .server.maxconn -expand 1 -fill x -pady 1
 pack .server.maxconn_value -in .server.maxconn \
 	-side right -anchor e -expand 1 -padx {3 0}
 
-# Minimum number of concurrent threads
-
-labelframe .server.threadsmin -labelanchor w -text [mc x17]:
-entry .server.threadsmin_value -textvariable threads.min \
-	-width 6 -justify center
-set .server.threadsmin_value.minmax {0 {} 0}
-if {$server_type == 0} {
-tooltip .server.threadsmin_value "[mc x17] ≥ 0"
-pack .server.threadsmin -expand 1 -fill x -pady {6 1}
-pack .server.threadsmin_value -in .server.threadsmin \
-	-side right -anchor e -expand 1 -padx {3 0}
-}
-
-# Maximum number of concurrent threads
-
-labelframe .server.threadsmax -labelanchor w -text [mc x18]:
-entry .server.threadsmax_value -textvariable threads.max \
-	-width 6 -justify center
-set .server.threadsmax_value.minmax {4 {} 8}
-if {$server_type == 0} {
-tooltip .server.threadsmax_value "[mc x18] ≥ 4"
-pack .server.threadsmax -expand 1 -fill x -pady 1
-pack .server.threadsmax_value -in .server.threadsmax \
-	-side right -anchor e -expand 1 -padx {3 0}
-}
-
 # Enable/disable server request logging
 
 checkbutton .server.logrequests -text [mc x19] -variable log.requests
-if {$server_type == 1} {
 pack .server.logrequests -expand 1 -fill x
-}
 
 # Reset server configuration
 
-button .server.reset -text [mc b92] -width 8 -command "reset_server_values"
+button .server.reset -text [mc b92] -width 8 -command reset_server_values
 tooltip .server.reset [mc b92t]
 pack .server.reset -pady {5 0}
 
 proc reset_server_values {} {
-  foreach widget {.server.port_srv_value .server.port_ovl_value \
-	.server.maxconn_value \
-	.server.threadsmin_value .server.threadsmax_value} {
-    set ::[$widget cget -textvariable] [lindex [set ::$widget.minmax] 2]
-  }
+  foreach widget {.server.port_value .server.maxconn_value} \
+	{set ::[$widget cget -textvariable] [lindex [set ::$widget.minmax] 2]}
   .server.engine_values current 0
   .server.interface_values set $::interface
 }
 
-foreach widget {.server.port_srv_value .server.port_ovl_value \
-	.server.maxconn_value \
-	.server.threadsmin_value .server.threadsmax_value} {
-  $widget configure -validate all -vcmd {validate_number %W %V %P " " "int"}
+foreach widget {.server.port_value .server.maxconn_value} {
+  $widget configure -validate all -vcmd {validate_number %W %V %P " " int}
   bind $widget <Shift-ButtonRelease-1> \
 	{set [%W cget -textvariable] [lindex ${::%W.minmax} 2]}
 }
@@ -1336,9 +1565,8 @@ proc get_element_attributes {name string} {
   lappend attributes name $name
   regsub ".*<$name\\s+(.*?)\\s*/?>.*" $string {\1} string
   set items [regsub -all {(\S+?)\s*=\s*(".*?"|'.*?')} $string {{\1=\2}}]
-  foreach item $items {
-    lappend attributes {*}[lrange [regexp -inline {(\S+)=.(.*).} $item] 1 2]
-  }
+  foreach item $items \
+    {lappend attributes {*}[lrange [regexp -inline {(\S+)=.(.*).} $item] 1 2]}
   return $attributes
 }
 
@@ -1348,77 +1576,67 @@ proc find_overlays_for_layer {layer_id layers} {
   set overlays {}
   set layer_index [lsearch -exact -index 0 $layers $layer_id]
   array set layer [lindex $layers [list $layer_index 1]]
-  if {[info exists layer(parent)]} {
-    lappend overlays {*}[find_overlays_for_layer $layer(parent) $layers]
-  }
+  if {[info exists layer(parent)]} \
+	{lappend overlays {*}[find_overlays_for_layer $layer(parent) $layers]}
   lappend overlays {*}$layer(overlays)
-  foreach overlay_id $overlays {
-    lappend overlays {*}[find_overlays_for_layer $overlay_id $layers]
-  }
+  foreach overlay_id $overlays \
+	{lappend overlays {*}[find_overlays_for_layer $overlay_id $layers]}
   return $overlays
-}
-
-# Switch overlay selection to selected style
-
-proc switch_overlays_selection {} {
-  foreach child [winfo children .overlays] {pack forget $child}
-  set style_index [.styles_values current]
-  set style [lindex ${::style.table} $style_index]
-  set style_id [lindex $style 0]
-  pack .overlays.$style_id -expand 1 -fill x
-  position_toplevel_window .overlays
 }
 
 # Read theme file and create styles & overlays lookup table
 # Update lookup table by presets from ini file, if any
 # Initialize style & overlays selection dialogs
 
-proc setup_styles_overlays_structure {} {
-  # Hide style & overlays selection
-  if {[winfo manager .styles] != ""} {
-    save_theme_settings
-    pack forget .styles
-    foreach child [winfo children .overlays] {destroy $child}
-  }
+proc update_theme_selection {} {
+  update_theme_styles_overlays
+  update_overlays_selection
+}
 
-  # Built-in themes have no style: nothing to do
-  # Built-in themes have hillshading: enable hillshading configuration
+proc update_theme_styles_overlays {} {
+
+  # Save current settings, hide style & overlays selection
+  save_theme_settings
+  destroy [winfo children .overlays]
+
   set theme ${::theme.selection}
   if {[regexp {^\(.*\)$} $theme]} {
-    unset -nocomplain ::style.table ::style.theme
-    if {[winfo ismapped .overlays]} {.overlays_show_hide invoke}
+    # Built-in themes have no style: nothing to do
+    # Built-in themes have hillshading: enable hillshading configuration
     .shading.onmap configure -state normal
-    update idletasks
-    return
-  }
-
-  # Read theme file
-  set ::style.theme $theme
-  set theme_file "$::themes_folder/$theme"
-  set fd [open $theme_file r]
-  set data [read $fd]
-  close $fd
-
-  # Split into list of elements between "<" and ">"
-  set elements [regexp -inline -all {<.*?>} $data]
-
-  # Search for hillshading element
-  if {[lsearch -regexp $elements {<hillshading\s+.*?>}] == -1} {
-    # Hillshading element not found: disable hillshading configuration
-    .shading.onmap configure -state disabled
+    set menu_first -1
   } else {
-    # Hillshading element found: enable hillshading configuration
-    .shading.onmap configure -state normal
+    # Read theme file
+    set ::style.theme $theme
+    set theme_file $::themes_folder/$theme
+    set fd [open $theme_file r]
+    set data [read $fd]
+    close $fd
+
+    # Split into list of elements between "<" and ">"
+    set elements [regexp -inline -all {<.*?>} $data]
+
+    # Search for hillshading element
+    if {[lsearch -regexp $elements {<hillshading\s+.*?>}] == -1} {
+      # Hillshading element not found: disable hillshading configuration
+      .shading.onmap configure -state disabled
+    } else {
+      # Hillshading element found: enable hillshading configuration
+      .shading.onmap configure -state normal
+    }
+
+    # Search for stylemenu element
+    set menu_first [lsearch -regexp $elements {<stylemenu\s+.*?>}]
   }
 
-  # Search for stylemenu element
-  set menu_first [lsearch -regexp $elements {<stylemenu\s+.*?>}]
-
-  # No style menu found: nothing to do
+  # No style menu found
   if {$menu_first == -1} {
     unset -nocomplain ::style.table ::style.theme
     if {[winfo ismapped .overlays]} {.overlays_show_hide invoke}
-    update idletasks
+    if {[winfo manager .styles] != ""} {
+      pack forget .styles
+      resize_toplevel_window .
+    }
     return
   }
 
@@ -1427,7 +1645,7 @@ proc setup_styles_overlays_structure {} {
   set menu_data [lrange $elements $menu_first $menu_last]
 
   # Analyze stylemenu element for attribute defaultvalue
-  array set stylemenu [get_element_attributes "stylemenu" [lindex $menu_data 0]]
+  array set stylemenu [get_element_attributes stylemenu [lindex $menu_data 0]]
   set defaultstyle $stylemenu(defaultvalue)
   set defaultlang  $stylemenu(defaultlang)
   unset stylemenu
@@ -1439,14 +1657,14 @@ proc setup_styles_overlays_structure {} {
     set layer_last [lsearch -start $layer_first -regexp $menu_data {</layer>}]
     set layer_data [lrange $menu_data $layer_first $layer_last]
     array unset layer
-    array set layer [get_element_attributes "layer" [lindex $layer_data 0]]
+    array set layer [get_element_attributes layer [lindex $layer_data 0]]
 
     # Find layer's localized layer name
     set indices [lsearch -all -regexp $layer_data {<name\s+.*?>}]
     foreach index $indices {
       array unset name
-      array set name [get_element_attributes "name" [lindex $layer_data $index]]
-      if {![info exists name(lang)]} {continue}
+      array set name [get_element_attributes name [lindex $layer_data $index]]
+      if {![info exists name(lang)]} continue
       if {$name(lang) == $::language} {
 	set layer(name) $name(value)
 	break
@@ -1470,7 +1688,7 @@ proc setup_styles_overlays_structure {} {
     foreach index $indices {
       array unset overlay
       array set overlay \
-	[get_element_attributes "overlay" [lindex $layer_data $index]]
+	[get_element_attributes overlay [lindex $layer_data $index]]
       lappend layer(overlays) $overlay(id)
     }
 
@@ -1483,26 +1701,25 @@ proc setup_styles_overlays_structure {} {
   foreach item $layers {
     array unset layer
     array set layer [lindex $item 1]
-    if {![info exists layer(visible)]} {continue}
+    if {![info exists layer(visible)]} continue
     set overlays {}
     foreach overlay_id [find_overlays_for_layer $layer(id) $layers] {
       set overlay_index [lsearch -exact -index 0 $layers $overlay_id]
       array unset overlay_layer
       array set overlay_layer [lindex $layers [list $overlay_index 1]]
-      if {![info exists overlay_layer(enabled)]} {
-	set overlay_layer(enabled) "false"
-      }
+      if {![info exists overlay_layer(enabled)]} \
+	{set overlay_layer(enabled) false}
       lappend overlays [list $overlay_layer(id) $overlay_layer(name) \
-	 $overlay_layer(enabled) $overlay_layer(enabled)]
+	$overlay_layer(enabled) $overlay_layer(enabled)]
     }
     lappend ::style.table [list $layer(id) $layer(name) $overlays]
   }
   unset -nocomplain layer overlay_layer
 
   # Restore style & overlays from folder ini_folder
-  set ini_file "$::ini_folder/theme.[regsub -all {/} $theme {.}].ini"
+  set file "$::ini_folder/theme.[regsub -all {/} $theme {.}].ini"
   array set preset {}
-  set fd [open "$ini_file" a+]
+  set fd [open $file a+]
   seek $fd 0
   while {[gets $fd line] != -1} {
     regexp {^(.*?)=(.*)$} $line "" name value
@@ -1524,7 +1741,7 @@ proc setup_styles_overlays_structure {} {
     set overlay_index 0
     foreach overlay $overlays {
       set overlay_id [lindex $overlay 0]
-      set name "$style_id.$overlay_id"
+      set name $style_id.$overlay_id
       if {[info exists preset($name)]} {
 	lset overlay 2 $preset($name)
 	lset overlays $overlay_index $overlay
@@ -1536,66 +1753,67 @@ proc setup_styles_overlays_structure {} {
     incr style_index
   }
 
-  # Fill overlay selections
-  foreach style ${::style.table} {
-    set style_id [lindex $style 0]
-    set parent .overlays.$style_id
-    frame $parent
-    label $parent.label -text [lindex $style 1]
-    frame $parent.separator1 -bd 2 -height 2 -relief sunken
-    pack $parent.label $parent.separator1 -expand 1 -fill x -pady {0 2}
-    set overlays [lindex $style 2]
-    foreach overlay $overlays {
-      set overlay_id [lindex $overlay 0]
-      set child $parent.$overlay_id
-      set variable [string range $child 1 end]
-      set ::$variable [lindex $overlay 2]
-      checkbutton $child -text [lindex $overlay 1] -padding 0 \
-	-variable $variable -onvalue "true" -offvalue "false" \
-	-command "update_style_overlay $child"
-      pack $child -expand 1 -fill x
-    }
-    frame $parent.separator2 -bd 2 -height 2 -relief sunken
-    pack $parent.separator2 -expand 1 -fill x -pady 2
-    frame $parent.frame
-    pack $parent.frame -expand 1
-    button $parent.frame.all -text [mc b91] -width 8 \
-	-command "select_style_overlays $parent all"
-    tooltip $parent.frame.all [mc b91t]
-    button $parent.frame.reset -text [mc b92] -width 8 \
-	-command "select_style_overlays $parent default"
-    tooltip $parent.frame.reset [mc b92t]
-    button $parent.frame.none -text [mc b93] -width 8 \
-	-command "select_style_overlays $parent none"
-    tooltip $parent.frame.none [mc b93t]
-    pack $parent.frame.all $parent.frame.reset $parent.frame.none \
-	-side left -pady {2 0}
-  }
-
-  # Fill style selection, select default style
+  # Fill style selection & select default style
   .styles_values configure -values [lmap i ${::style.table} {lindex $i 1}]
-  set style_index [lsearch -exact -index 0 ${::style.table} $defaultstyle]
-  .styles_values current $style_index
+  .styles_values current \
+	[lsearch -exact -index 0 ${::style.table} $defaultstyle]
 
   # Show style selection
   pack configure .styles -in .f -after .themes -expand 1 -fill x -pady 1
+  resize_toplevel_window .
+}
 
-  # Set default overlay selection
-  pack .overlays.$defaultstyle -expand 1 -fill x
-  position_toplevel_window .overlays
+# Update overlay selection to selected style
+
+proc update_overlays_selection {} {
+  destroy [winfo children .overlays]
+  if {![info exists ::style.table]} return
+  set style [lindex ${::style.table} [.styles_values current]]
+  set style_id [lindex $style 0]
+  set parent .overlays.${style_id}
+  frame $parent
+  label $parent.label -text [lindex $style 1]
+  frame $parent.separator1 -bd 2 -height 2 -relief sunken
+  pack $parent.label $parent.separator1 -expand 1 -fill x -pady {0 2}
+  set overlays [lindex $style 2]
+  foreach overlay $overlays {
+    set overlay_id [lindex $overlay 0]
+    set child $parent.$overlay_id
+    set variable [string range $child 1 end]
+    set ::$variable [lindex $overlay 2]
+    checkbutton $child -text [lindex $overlay 1] -padding 0 \
+	-variable $variable -onvalue true -offvalue false \
+	-command "update_style_overlay $style_id $overlay_id"
+    pack $child -expand 1 -fill x
+  }
+  frame $parent.separator2 -bd 2 -height 2 -relief sunken
+  pack $parent.separator2 -expand 1 -fill x -pady 2
+  frame $parent.buttons
+  pack $parent.buttons -anchor n -expand 1
+  button $parent.buttons.all -text [mc b91] -width 8 \
+	-command "select_style_overlays $style_id all"
+  tooltip $parent.buttons.all [mc b91t]
+  button $parent.buttons.reset -text [mc b92] -width 8 \
+	-command "select_style_overlays $style_id default"
+  tooltip $parent.buttons.reset [mc b92t]
+  button $parent.buttons.none -text [mc b93] -width 8 \
+	-command "select_style_overlays $style_id none"
+  tooltip $parent.buttons.none [mc b93t]
+  pack $parent.buttons.all $parent.buttons.reset $parent.buttons.none \
+	-side left -pady {2 0}
+  pack $parent -anchor nw
+  resize_toplevel_window .overlays
 }
 
 # Update style's lookup table entry to current overlay selection
 
-proc update_style_overlay {child} {
-  set enabled [set ::[$child cget -variable]]
-  regexp {^\.overlays\.(.*?)\.(.*)$} $child "" style_id overlay_id
+proc update_style_overlay {style_id overlay_id} {
   set style_index [lsearch -exact -index 0 ${::style.table} $style_id]
   set style [lindex ${::style.table} $style_index]
   set overlays [lindex $style 2]
   set overlay_index [lsearch -exact -index 0 $overlays $overlay_id]
   set overlay [lindex $overlays $overlay_index]
-  lset overlay 2 $enabled
+  lset overlay 2 [set ::overlays.$style_id.$overlay_id]
   lset overlays $overlay_index $overlay
   lset style 2 $overlays
   lset ::style.table $style_index $style
@@ -1606,13 +1824,12 @@ proc update_style_overlay {child} {
 # - deselect all overlays
 # - select default overlays only
 
-proc select_style_overlays {parent select} {
+proc select_style_overlays {style_id select} {
   switch $select {
-    all		{set check {$enabled != "true"}}
-    none	{set check {$enabled == "true"}}
+    all		{set check {$enabled != true}}
+    none	{set check {$enabled == true}}
     default	{set check {$enabled != $default}}
   }
-  regexp {^\.overlays\.(.*?)$} $parent "" style_id
   set style_index [lsearch -exact -index 0 ${::style.table} $style_id]
   set style [lindex ${::style.table} $style_index]
   set overlays [lindex $style 2]
@@ -1621,8 +1838,7 @@ proc select_style_overlays {parent select} {
     set default [lindex $overlay 3]
     if {[expr $check]} {
       set overlay_id [lindex $overlay 0]
-      set child $parent.$overlay_id
-      $child invoke
+      .overlays.$style_id.$overlay_id invoke
     }
   }
 }
@@ -1630,37 +1846,55 @@ proc select_style_overlays {parent select} {
 # Get currently selected style & overlays
 
 proc get_selected_style_overlays {} {
+  if {![info exists ::style.table]} return
   set style_index [.styles_values current]
   set style [lindex ${::style.table} $style_index]
   set style_id [lindex $style 0]
   set overlays [lindex $style 2]
   set overlay_ids {}
   foreach overlay $overlays {
-    if {[lindex $overlay 2] == "true"} {
-      lappend overlay_ids [lindex $overlay 0]
-    }
+    if {[lindex $overlay 2]} {lappend overlay_ids [lindex $overlay 0]}
   }
-  set overlay_ids [join $overlay_ids ","]
-  return [list $style_id $overlay_ids]
+  return [list $style_id [join $overlay_ids]]
+}
+
+# Set selected style & overlays
+
+proc set_selected_style_overlays {style_id overlay_ids} {
+  if {![info exists ::style.table]} return
+  set style_index [lsearch -exact -index 0 ${::style.table} $style_id]
+  if {$style_index < 0} return
+  set style [lindex ${::style.table} $style_index]
+  set overlays [lindex $style 2]
+  set overlay_index 0
+  foreach overlay $overlays {
+    set overlay_id [lindex $overlay 0]
+    lset overlay 2 [expr {$overlay_id in $overlay_ids} ? true : false]
+    lset overlays $overlay_index $overlay
+    incr overlay_index
+  }
+  lset style 2 $overlays
+  lset ::style.table $style_index $style
+  .styles_values current $style_index
 }
 
 # Save theme settings to folder ini_folder
 
 proc save_theme_settings {} {
+  if {![info exists ::style.table]} return
   set theme ${::style.theme}
   set style_index [.styles_values current]
   set style [lindex ${::style.table} $style_index]
   set style_id [lindex $style 0]
-  set ini_file "$::ini_folder/theme.[regsub -all {/} $theme {.}].ini"
-  set fd [open "$ini_file" w]
-  fconfigure $fd -buffering full
-  puts $fd "defaultstyle=$style_id"
+  set file "$::ini_folder/theme.[regsub -all {/} $theme {.}].ini"
+  set fd [open $file w]
+  puts $fd defaultstyle=$style_id
   foreach style ${::style.table} {
     set style_id [lindex $style 0]
     set overlays [lindex $style 2]
     foreach overlay $overlays {
       set overlay_id [lindex $overlay 0]
-      puts $fd "$style_id.$overlay_id=[lindex $overlay 2]"
+      puts $fd $style_id.$overlay_id=[lindex $overlay 2]
     }
   }
   close $fd
@@ -1668,42 +1902,34 @@ proc save_theme_settings {} {
 
 # Enable styles & overlays selection
 
-bind .themes_values <<ComboboxSelected>> setup_styles_overlays_structure
-event generate .themes_values <<ComboboxSelected>>
+bind .themes_values <<ComboboxSelected>> update_theme_selection
+update_theme_selection
 
 # --- End of theme file processing
 
 # Save global settings to folder ini_folder
 
-proc save_global_settings {} {uplevel #0 {
+proc save_global_settings {} {
   scan [wm geometry .] "%dx%d+%d+%d" width height x y
-  set window.geometry "$x $y $width $height"
-  set font.size [font configure TkDefaultFont -size]
-  set console.geometry [send $ctid "set geometry"]
-  set console.font.size [send $ctid "font configure font -size"]
-  set fd [open "$ini_folder/global.ini" w]
-  fconfigure $fd -buffering full
-  foreach name {renderer.name rendering.engine maps.language \
+  set ::window.geometry "$x $y $width $height"
+  set ::font.size [font configure TkDefaultFont -size]
+  set ::console.geometry [ctsend "set geometry"]
+  set ::console.font.size [ctsend "font configure font -size"]
+  save_settings $::ini_folder/global.ini \
+	rendering.engine maps.language \
 	maps.selection maps.world maps.contrast maps.gamma \
 	theme.selection user.scale text.scale symbol.scale line.scale \
-	tcp.maxconn threads.min threads.max log.requests \
+	tcp.maxconn log.requests \
 	window.geometry font.size \
-	console.show console.geometry console.font.size} {
-    puts $fd "$name=[set $name]"
-  }
-  close $fd
-}}
+	console.show console.geometry console.font.size
+}
 
 # Save application dependent settings to folder ini_folder
 
-proc save_tmsclient_settings {} {uplevel #0 {
-  set fd [open "$ini_folder/tmsclient.ini" w]
-  fconfigure $fd -buffering full
-  foreach name {tcp.interface tcp.port_srv tcp.port_ovl shading.layer} {
-    puts $fd "$name=[set $name]"
-  }
-  close $fd
-}}
+proc save_tmsclient_settings {} {
+  save_settings $::ini_folder/tmsclient.ini \
+	tcp.interface tcp.port task.use
+}
 
 # Validate signed/unsigned int/float number value
 
@@ -1741,7 +1967,7 @@ proc incr_font_size {incr} {
   set size [font configure TkDefaultFont -size]
   if {$size < 0} {set size [expr round(-$size/[tk scaling])]}
   incr size $incr
-  if {$size < 5 || $size > 20} {return}
+  if {$size < 5 || $size > 20} return
   set fonts {TkDefaultFont TkTextFont TkFixedFont TkTooltipFont title_font}
   foreach item $fonts {font configure $item -size $size}
   set height [expr [winfo reqheight .title]-2]
@@ -1762,23 +1988,20 @@ proc incr_font_size {incr} {
   }
   update idletasks
 
-  foreach item {.renderer_values .themes_values .styles_values \
-	.shading.algorithm.values \
+  foreach item {.themes_values .styles_values .shading.algorithm.values \
 	.server.engine_values .server.interface_values} \
 	{if {[winfo exists $item]} {$item configure -justify left}}
   foreach item {.effects.user_scale .effects.text_scale \
 	.effects.symbol_scale .effects.line_scale \
 	.effects.gamma_scale .effects.contrast_scale} \
 	{if {[winfo exists $item]} {$item configure -width $height}}
+  foreach item {. .overlays .shading .effects .server} \
+	{resize_toplevel_window $item}
 }
 
 # Check selection for completeness
 
 proc selection_ok {} {
-  if {[llength ${::maps.selection}] == 0} {
-    error_message [mc e41] return
-    return 0
-  }
   if {${::shading.onoff} && ![file isdirectory ${::dem.folder}]} {
     error_message [mc e45] return
     return 0
@@ -1795,19 +2018,21 @@ proc process_start {command process} {
     thread::wait
   "]
 
-  send $tid {
+  proc tsend {script} "return \[send $tid \$script\]"
+
+  tsend {
     lassign [chan pipe] fdi fdo
     set rc [catch "exec $command >&@ $fdo &" result]
     close $fdo
     if {$rc} {close $fdi} else {thread::detach $fdi}
   }
 
-  set rc [send $tid "set rc"]
-  set result [send $tid "set result"]
+  set rc [tsend "set rc"]
+  set result [tsend "set result"]
 
   if {$rc} {
     thread::release $tid
-    error_message "$result" return
+    error_message $result return
     after 0 {set action 0}
     return
   }
@@ -1816,7 +2041,7 @@ proc process_start {command process} {
   namespace upvar $process fd fd pid pid exe exe
   set ${process}::command $command
 
-  set fd [send $tid "set fdi"]
+  set fd [tsend "set fdi"]
   thread::attach $fd
   fconfigure $fd -blocking 0 -buffering line
 
@@ -1845,18 +2070,24 @@ proc process_start {command process} {
 
 proc process_kill {process} {
 
-  if {![process_running $process]} {return}
+  if {![process_running $process]} return
   namespace upvar $process fd fd pid pid
 
   fileevent $fd readable [regsub {m52} [fileevent $fd readable] {m53}]
 
   if {$::tcl_platform(os) == "Windows NT"} {
-    catch {exec TASKKILL /F /PID $pid}
-  } elseif {$::tcl_platform(os) == "Linux"} {
-    catch {exec kill -SIGTERM $pid}
+    catch {exec TASKKILL /F /PID $pid /T}
+  }
+  if {$::tcl_platform(os) == "Linux"} {
+    set rc [catch {exec pgrep -P $pid} list]
+    if {$rc} {set list $pid} else {lappend list $pid}
+    foreach item $list {catch {exec kill -SIGTERM $item}}
   }
 
-  if {![info exist ::$process.eof]} {vwait $process.eof}
+  if {![info exist ::$process.eof]} {
+    after 5000 "set $process.eof 1"
+    vwait $process.eof
+  }
 
 }
 
@@ -1866,49 +2097,136 @@ proc process_running {process} {
   return [expr [namespace exists $process] && ![info exists ::$process.eof]]
 }
 
-# Mapsforge tile server start
+# Mapsforge server start
 
-proc srv_start {srv} {
-
-  set port [set ::tcp.port_$srv]
-  set name [set ::name_$srv]
-
-  # Map or hillshading?
-
-  set shading ${::shading.onoff}
-  if {$srv == "srv"} {
-    if {${::shading.layer} == "asmap"} {set shading 0}
-  } elseif {$srv == "ovl"} {
-    if {!${::shading.onoff} || ${::shading.layer} == "onmap"} {
-      srv_stop ovl
-      clean_mapsforge ovl
-      unset -nocomplain ::md5_ovl
-      file delete $::tmpdir/tasks/$name.properties
-      return
-    }
-    # No hillshading without map
-    if {![process_running srv]} {return}
+proc srv_task_create {task} {
+  set file $::ini_folder/task.$task.ini
+  if {![file exists $file]} continue
+  set fd [open $file r]
+  while {[gets $fd line] != -1} {
+    regexp {^(.*?)=(.*)$} $line "" name value
+    set $name $value
   }
+  close $fd
 
-  if {[set ::restart_$srv]} {srv_stop $srv}
+  # Map: on, off?
+
+  set map ${maps.world}
+  if {[llength ${maps.selection}] >= 0} {set map 1}
+
+  # Hillshading: off, on map, as map?
+
+  set shading ${shading.onoff}
+  if {$shading && ${shading.layer} == "asmap"} {incr shading}
+
+  # Configure subtasks
+
+  foreach subtask {Map Hillshading} {
+
+    set name [regsub ".(.default)." $subtask.$task ""]
+    set file $::tmpdir/tasks/$name.properties
+
+    set params {}
+
+    if {$subtask == "Map" && $map == 1} {
+      set language ${maps.language}
+      if {$language != ""} {lappend params language $language}
+      set map_list [lmap item ${maps.selection} {set map $::maps_folder/$item}]
+      lappend params mapfiles [join $map_list ,]
+      if {${maps.world} == 1} {lappend params worldmap true}
+      set theme ${theme.selection}
+      if {[regexp {^\(.*\)$} $theme]} {
+	lappend params themefile [string trim $theme ()]
+      } else {
+	set theme_file $::themes_folder/$theme
+	lappend params themefile $theme_file
+	if {[info exists style.id]} {
+	  lappend params style ${style.id}
+	  lappend params overlays [join ${overlay.ids} ,]
+	}
+      }
+      lappend params gamma-correction ${maps.gamma}
+      lappend params contrast-stretch ${maps.contrast}
+      lappend params text-scale ${text.scale}
+      lappend params symbol-scale ${symbol.scale}
+      lappend params user-scale ${user.scale}
+      lappend params line-scale ${line.scale}
+    }
+
+    if {($subtask == "Map" && $shading == 1) || \
+	($subtask == "Hillshading" && $shading == 2)} {
+      set algorithm ${shading.algorithm}
+      if {$algorithm == "simple"} {
+	set linearity ${shading.simple.linearity}
+	set scale ${shading.simple.scale}
+	if {$linearity == ""} {set linearity 0.1}
+	if {$scale == ""} {set scale 0.666}
+	lappend params hillshading-algorithm $algorithm\($linearity,$scale\)
+      } elseif {$algorithm == "diffuselight"} {
+	set angle ${shading.diffuselight.angle}
+	if {$angle == ""} {set angle 50.}
+	lappend params hillshading-algorithm $algorithm\($angle\)
+      } elseif {[regexp {asy$} $algorithm]} {
+	lmap {i v} [array get shading.asy.array] \
+	  {lset shading.asy.values $i $v}
+	set values [join ${shading.asy.values} ,]
+	lappend params hillshading-algorithm $algorithm\($values\)
+      }
+      set magnitude ${shading.magnitude}
+      if {$magnitude == ""} {set magnitude 1.}
+      lappend params hillshading-magnitude $magnitude
+      foreach item {min max} {
+	lassign [list shading.zoom.$item.apply shading.zoom.$item.value] i v
+	if {[info exists $i] && [set $i] == true} {
+	  lappend params hillshading-zoom-$item [set $v]
+	}
+      }
+      lappend params demfolder ${dem.folder}
+    }
+
+    if {[llength $params] == 0} {
+      file delete $file
+      unset -nocomplain ::md5_$name
+      continue
+    }
+
+    set data ""
+    foreach {item value} $params {append data $item=$value\n}
+    set md5 [md5 -hex [encoding convertto utf-8 $data]]
+    if {[info exists ::md5_$name] && [set ::md5_$name] == $md5} continue
+    if {[info exists ::md5_$subtask] && [set ::md5_$subtask] == $md5} continue
+
+    set fd [open $file w]
+    puts $fd $data
+    close $fd
+    set ::md5_$name $md5
+    cputi "URL: 'http://127.0.0.1:${::tcp.port}/{z}/{x}/{y}.png?task=$name'"
+  }
+}
+
+proc srv_task_delete {task} {
+  foreach subtask {Map Hillshading} {
+    set name [regsub ".(.default)." $subtask.$task ""]
+    set file $::tmpdir/tasks/$name.properties
+    file delete $file
+    unset -nocomplain ::md5_$name
+  }
+}
+
+proc srv_start {} {
+
+  if {$::restart_srv} {srv_stop}
 
   # Compose command line
 
-  lappend params -Xmx1G -Xms256M -Xmn256M
+  set params {-Xmx1G -Xms256M -Xmn256M}
   if {[info exists ::java_args]} {lappend params {*}$::java_args}
   lappend params -Dfile.encoding=UTF-8
 
   set engine ${::rendering.engine}
   if {$engine != "(default)"} {
     set engine [file dirname $::server_jar]/$engine
-    if {$::java_version <= 8} {
-      lappend params -Xbootclasspath/p:$engine
-      set engine [regsub {.jar} $engine {-sun-java2d.jar}]
-      lappend params -Xbootclasspath/p:$engine
-      lappend params -Dsun.java2d.renderer=sun.java2d.marlin.DMarlinRenderingEngine
-    } else {
-      lappend params --patch-module java.desktop="$engine"
-    }
+    lappend params --patch-module java.desktop="$engine"
   }
 
 # set now [clock format [clock seconds] -format "%Y-%m-%d_%H-%M-%S"]
@@ -1941,147 +2259,49 @@ proc srv_start {srv} {
   lappend params -Dsun.java2d.render.bufferSize=524288
 # lappend params -Dawt.useSystemAAFontSettings=on
 
-  if {$::java_version <= 8} {
-    lappend command $::java_cmd {*}$params -jar $::server_jar
-  } else {
-    set fd [open $::tmpdir/java_args w]
-    foreach item $params {puts $fd "$item"}
+  set fd [open $::tmpdir/java_args w]
+  foreach item $params {puts $fd $item}
+  close $fd
+  lappend command $::java_cmd @$::tmpdir/java_args -jar $::server_jar
+  lappend command -config [file nativename $::tmpdir]
+
+  # Configure server
+
+  set data terminate=true\n
+  append data requestlog-format=
+  if {${::log.requests}} {append data "From %{client}a Get %U%q Status %s Size %O bytes Time %{ms}T ms"}
+  append data \n
+  if {${::tcp.interface} == "localhost"} {append data host=localhost\n}
+  set port [set ::tcp.port]
+  append data port=$port\n
+  append data acceptQueueSize=${::tcp.maxconn}\n
+
+  set md5 [md5 -hex [encoding convertto utf-8 $data]]
+  if {![info exists ::md5_server] || $::md5_server != $md5} {
+    srv_stop
+    set fd [open $::tmpdir/server.properties w]
+    puts $fd $data
     close $fd
-    lappend command $::java_cmd @$::tmpdir/java_args -jar $::server_jar
+    set ::md5_server $md5
   }
 
-  if {$::server_type == 1 && $srv == "srv"} {
-    lappend command -config [file nativename $::tmpdir]
-
-    set data "terminate=true\n"
-    append data "requestlog-format="
-    if {${::log.requests}} {append data "From %{client}a Get %U%q Status %s Size %O bytes Time %{ms}T ms"}
-    append data "\n"
-    if {${::tcp.interface} == "localhost"} {append data "host=localhost\n"}
-    append data "port=$port\n"
-    append data "acceptQueueSize=${::tcp.maxconn}\n"
-    set md5 [md5 -hex [encoding convertto utf-8 $data]]
-
-    if {![info exists ::md5_cfg] || $::md5_cfg != $md5} {
-      srv_stop $srv
-      set fd [open $::tmpdir/server.properties w]
-      puts -nonewline $fd $data
-      close $fd
-      set ::md5_cfg $md5
-    }
-
+  save_task_settings ${::task.active}
+  foreach task ${::task.set} {
+    if {$task in ${::task.use}} {srv_task_create $task} \
+    else {srv_task_delete $task}
   }
 
-  set params {}
-  if {$::server_type == 0} {
-    lappend params interface ${::tcp.interface}
-    lappend params port $port
+  if {[process_running srv]} {
+    if {$command == ${srv::command}} return
+    srv_stop
   }
 
-  if {$srv == "srv"} {
-    set renderer [.renderer_values get]
-    lappend params renderer $renderer
-    set language [.lang_value get]
-    if {$language != ""} {lappend params language $language}
-
-    set map_list [lmap item ${::maps.selection} {set map $::maps_folder/$item}]
-    lappend params mapfiles [join $map_list ,]
-    if {${::maps.world} == 1} {lappend params worldmap true}
-    set theme [.themes_values get]
-    if {$theme == "(default)"} {
-    } elseif {[regexp {^\(.*\)$} $theme]} {
-      lappend params themefile [string trim $theme ()]
-    } else {
-      set theme_file "$::themes_folder/$theme"
-      lappend params themefile $theme_file
-      if {[winfo manager .styles] != ""} {
-	lassign [get_selected_style_overlays] style_id overlay_ids
-	lappend params style $style_id
-	lappend params overlays $overlay_ids
-      }
-    }
-
-    lappend params gamma-correction ${::maps.gamma}
-    lappend params contrast-stretch ${::maps.contrast}
-    lappend params text-scale ${::text.scale}
-    lappend params symbol-scale ${::symbol.scale}
-    lappend params user-scale ${::user.scale}
-    if {$::server_version >= 210000} {lappend params line-scale ${::line.scale}}
-  } elseif {$srv == "ovl" && $::server_type == 0} {
-    lappend params mapfiles ""
-  }
-
-  if {$shading} {
-    set algorithm ${::shading.algorithm}
-    if {$algorithm == "simple"} {
-      set linearity ${::shading.simple.linearity}
-      set scale ${::shading.simple.scale}
-      if {$linearity == ""} {set linearity 0.1}
-      if {$scale == ""} {set scale 0.666}
-      lappend params hillshading-algorithm "$algorithm\($linearity,$scale\)"
-    } elseif {$algorithm == "diffuselight"} {
-      set angle ${::shading.diffuselight.angle}
-      if {$angle == ""} {set angle 50.}
-      lappend params hillshading-algorithm "$algorithm\($angle\)"
-    } elseif {[regexp {asy$} $algorithm]} {
-      lmap {i v} [array get ::shading.asy.array] \
-	{lset ::shading.asy.values $i $v}
-      set values [join ${::shading.asy.values} ,]
-      lappend params hillshading-algorithm "$algorithm\($values\)"
-    }
-    set magnitude ${::shading.magnitude}
-    if {$magnitude == ""} {set magnitude 1.}
-    lappend params hillshading-magnitude "$magnitude"
-    lappend params demfolder ${::dem.folder}
-  }
-
-  if {$::server_type == 0} {
-    lappend params connectors "http11,h2c"
-    lappend params max-queuesize ${::tcp.maxconn}
-    lappend params max-thread ${::threads.max}
-    lappend params min-thread ${::threads.min}
-    if {$::server_version >= 190000} {lappend params terminate true}
-  }
-
-  set md5 [md5 -hex [encoding convertto utf-8 $params]]
-
-  if {$::server_type == 0} {
-
-    foreach {item value} $params {lappend command -$item $value}
-
-    if {![info exists ::md5_$srv] || [set ::md5_$srv] != $md5} {
-      srv_stop $srv
-      set ::md5_$srv $md5
-    }
-
-  } elseif {$::server_type == 1} {
-
-    set data ""
-    foreach {item value} $params {append data "$item=$value\n"}
-
-    if {![info exists ::md5_$srv] || [set ::md5_$srv] != $md5} {
-      set fd [open $::tmpdir/tasks/$name.properties w]
-      puts -nonewline $fd $data
-      close $fd
-      set ::md5_$srv $md5
-      cputi "URL: http://127.0.0.1:${::tcp.port_srv}/{z}/{x}/{y}.png?task=$name"
-    }
-
-    if {$srv == "ovl"} {return}
-
-  }
-
-  if {[process_running $srv]} {
-    if {$command == [set ${srv}::command]} {return}
-    srv_stop $srv
-  }
-
-  set text "$name Server \[[string toupper $srv]\]"
+  set text "Mapsforge Server \[SRV\]"
   # Server not yet running: TCP port is currently in use?
   set count 0
   while {$count < 5} {
     set rc [catch {socket -server {} -myaddr 127.0.0.1 $port} fd]
-    if {!$rc} {break}
+    if {!$rc} break
     incr count
     after 200
   }
@@ -2095,57 +2315,52 @@ proc srv_start {srv} {
   # Start server
 
   cputi "[mc m54 $text] ..."
-  cputs "[get_shell_command $command]"
+  cputs [get_shell_command $command]
 
-  process_start $command $srv
-  set ::restart_$srv 0
+  process_start $command srv
+  set ::restart_srv 0
 
   # Wait until port becomes ready to accept connections or server aborts
   # Send dummy render request and wait for rendering initialization
 
-  set url "http://127.0.0.1:$port/0/0/0.png"
-  if {$::server_type == 1} {append url "?task=$name"}
-  while {[process_running $srv]} {
+  set url http://127.0.0.1:$port
+  while {[process_running srv]} {
     if {[catch {::http::geturl $url} token]} {after 10; continue}
     set size [::http::size $token]
     ::http::cleanup $token
-    if {$size} {break}
+    if {$size} break
   }
   after 20
   update
 
-  if {![process_running $srv]} {error_message [mc m55 $text] return; return}
-  set ${srv}::port $port
+  if {![process_running srv]} {error_message [mc m55 $text] return; return}
+  set srv::port $port
 
 }
 
-# Mapsforge tile server stop
+# Mapsforge server stop
 
-proc srv_stop {srv} {
+proc srv_stop {} {
 
-  if {$::server_type == 1 && $srv == "ovl"} {return}
-
-  if {![process_running $srv]} {return}
-  namespace upvar $srv fd fd port port
+  if {![process_running srv]} return
+  namespace upvar srv fd fd port port
 
   fileevent $fd readable [regsub "action" [fileevent $fd readable] "{}"]
 
-  if {$::server_version < 190000} {
-    process_kill $srv
-  } else {
-    set url "http://127.0.0.1:$port/terminate"
-    if {![catch {::http::geturl $url} token]} {
-      if {[::http::status $token] == "eof"} {set code 200} \
-      else {set code [::http::ncode $token]}
-      if {$code != 200} {process_kill $srv; return}
-      ::http::cleanup $token
-    }
-    if {![info exist ::$srv.eof]} {vwait $srv.eof}
+  set url http://127.0.0.1:$port/terminate
+  if {![catch {::http::geturl $url} token]} {
+    if {[::http::status $token] == "eof"} {set code 200} \
+    else {set code [::http::ncode $token]}
+    if {$code != 200} {process_kill srv; return}
+    ::http::cleanup $token
   }
+  if {![info exist ::srv.eof]} {vwait srv.eof}
 
 }
 
 # Show main window (at saved position)
+
+restore_task_settings ${task.active}
 
 wm positionfrom . program
 if {[info exists window.geometry]} {
@@ -2163,19 +2378,19 @@ wm deiconify .
 while {1} {
   vwait action
   if {$action == 0} {
-    foreach item {global shading tmsclient} {save_${item}_settings}
-    if {[winfo manager .styles] != ""} {save_theme_settings}
+    save_task_settings ${task.active}
+    restore_task_settings (default)
+    foreach item {global theme shading tmsclient} {save_${item}_settings}
     exit
   }
   unset action
-  if {[selection_ok]} {break}
+  if {[selection_ok]} break
 }
 
 # Create server's temporary files folder
 
 append tmpdir /[format "TMS%8.8x" [pid]]
-file mkdir $tmpdir
-if {$server_type == 1} {file mkdir $tmpdir/tasks}
+file mkdir $tmpdir/tasks
 
 # Create server logging properties
 
@@ -2188,30 +2403,27 @@ puts $fd "log4j.appender.stdout.layout=org.apache.log4j.PatternLayout"
 puts $fd "log4j.appender.stdout.layout.ConversionPattern=%d{yyyy-MM-dd HH:mm:ss.SSS} %m%n"
 close $fd
 
-# Start Mapsforge tile server
+# Start Mapsforge server
 
 busy_state 1
 set restart_srv 0
-set restart_ovl 0
-srv_start srv
-if {[process_running srv]} {srv_start ovl}
+srv_start
 busy_state 0
 
 # Wait for new selection or finish
 
-bind .buttons.continue <Double-ButtonPress-1> \
-	"set restart_srv 1;set restart_ovl 1"
+bind .buttons.continue <Double-ButtonPress-1> "set restart_srv 1"
 
 update idletasks
 if {![info exists action]} {vwait action}
 
-# Restart tile server with new settings
+# Restart Mapsforge server with new settings
 
 while {$action == 1} {
   unset action
   if {[selection_ok]} {
     busy_state 1
-    foreach item {ovl srv} {srv_start $item}
+    srv_start
     busy_state 0
     update idletasks
   }
@@ -2219,9 +2431,9 @@ while {$action == 1} {
 }
 unset action
 
-# Stop Mapsforge tile server
+# Stop Mapsforge server
 
-foreach item {srv ovl} {srv_stop $item}
+srv_stop
 
 # Linux: work-around forcing Tcl to clean up it's background zombie processes
 catch {exec /bin/true}
@@ -2236,13 +2448,14 @@ wm withdraw .
 
 # Save settings to folder ini_folder
 
-foreach item {global shading tmsclient} {save_${item}_settings}
-if {[winfo manager .styles] != ""} {save_theme_settings}
+save_task_settings ${task.active}
+restore_task_settings (default)
+foreach item {global theme shading tmsclient} {save_${item}_settings}
 
 # Wait until output console window was closed
 
-if {[send $ctid "winfo ismapped ."]} {
-  send $ctid "
+if {[ctsend "winfo ismapped ."]} {
+  ctsend "
     write \"\n[mc m99]\"
     wm protocol . WM_DELETE_WINDOW {}
     bind . <ButtonRelease-3> {destroy .}

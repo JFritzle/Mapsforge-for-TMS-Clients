@@ -6,7 +6,9 @@ Many map applications do not support local Mapsforge maps out of the box. Prebui
 
 Some of these map applications however, amongst these the Java OpenStreetMap Editor JOSM, are able to handle maps provided as tiles by a [Tile Map Service](https://en.wikipedia.org/wiki/Tile_Map_Service) (TMS), which is mainly used by web mapping servers. To make local Mapsforge maps nevertheless available within these applications, a local tile server can be set up to render these Mapsforge maps and to interact with them via TMS protocol. The corresponding tile server is available at this [mapsforgesrv](https://github.com/telemaxx/mapsforgesrv) repository.  
 
-While old tile server type is capable of rendering only one single set of parameters at a time, the new so-called *tasks* server type is capable of rendering multiple sets of parameters concurrently. Thus, a single *tasks* server instance can replace multiple old server instances.  
+While old *single task* server type was capable of rendering only one single set of parameters at a time, the new *multiple tasks* server type is capable of rendering multiple sets of parameters concurrently. Thus, one single *multiple tasks* server instance can replace multiple *single task* server instances.  
+**This Graphical user interface only supports the *multiple tasks* server type.**  
+Latest GUI supporting *single task* server type is still available in GitHub's [*legacy*](https://github.com/JFritzle/Mapsforge-for-TMS-Clients/tree/legacy) branch.
 
 ### Graphical user interface
 This project’s intension is to easily let the user interactively and comfortably select the numerous available options of tile server. In addition, option settings as well as position and font size of graphical user interface automatically get saved and restored. Tile server gets started/restarted using these options without need to manually set up any configuration files. 
@@ -18,37 +20,33 @@ User settings file is named is named _Mapsforge-for-TMS-Clients.ini_. A template
 Resource files are named _Mapsforge-for-TMS-Clients.<locale\>_, where _<locale\>_ matches locale’s 2 lowercase letters ISO 639-1 code. English localized resource file _Mapsforge-for-TMS-Clients.en_ and German localized resource file _Mapsforge-for-TMS-Clients.de_ are provided. Script can be easily localized to any other system’s locale by providing a corresponding resource file using English resource file as a template. 
 
 Screenshot of graphical user interface: 
-![GUI](https://github.com/JFritzle/Mapsforge-for-TMS-Clients/assets/62614244/ed3901a4-58e0-48f1-88cc-c83eda1f87af)
+![GUI_Windows](https://github.com/user-attachments/assets/0a3e4a05-bdcf-46df-ae1c-6dea582ae223)
 
-Please note:  
-Old tile server type has reached end of life and version 0.21.4 is last version released. Further development only takes place on new "tasks" server type. After some grace period, graphical user interface support for the old server type will be dropped. Therefore, an early switch to the new server type is recommended.   
 
 ### Installation
 
-1.	Java runtime environment (JRE) or Java development kit (JDK)   
-Note: While old server type versions exist for JRE version 8 or higher, new *tasks* server type versions require JRE version 11 or higher. Each JDK contains JRE as subset.  
+1.	Java runtime environment (JRE) or Java development kit (JDK)  
+JRE version 11 or higher is required. Each JDK contains JRE as subset.  
 Windows: If not yet installed, download and install JRE or JDK, e.g. from [Oracle](https://www.java.com) or [Adoptium](https://adoptium.net/de/temurin/releases).  
 Linux: If not yet installed, install JRE or JDK using Linux package manager. (Ubuntu: _apt install openjdk-<version\>-jre_ or _apt install openjdk-<version\>-jdk_ with required or newer _<version\>_)
 
 2.	Mapsforge tile server  
 Open [mapsforgesrv releases](https://github.com/telemaxx/mapsforgesrv/releases).  
-For old server type and JRE version 11 or higher, download most recently released jar file _mapsforgesrv-fatjar.jar_ from   _<release\>\_for\_java11_ assets.  
-For old server type and JRE version 8 (or higher), download most recently released jar file _mapsforgesrv4java8.jar_ from _<release\>\_for\_java8_ assets.  
-For new *tasks* server type and JRE version 11 or higher, download most recently released jar file _mapsforgesrv-fatjar.jar_ from _<release\>\_for\_java11_tasks_ assets.  
+Download most recently released jar file _mapsforgesrv-fatjar.jar_ from _<release\>\_for\_java11_tasks_ assets.  
 Windows: Copy downloaded jar file into Mapsforge tile server’s installation folder, e.g. into folder _%programfiles%/MapsforgeSrv_.  
 Linux: Copy downloaded jar file into Mapsforge tile server’s installation folder, e.g. into folder _~/MapsforgeSrv_.  
 Note:  
-Currently Mapsforge tile server old server type and new *tasks* server type with server version 0.17.4 or higher is required. Previous server versions are no longer supported.  
+New *multiple tasks* server type and server version 0.21.0.0 or higher is required.  
+Old *single task* server type and previous server versions are no longer supported.  
 
 3. Alternative Marlin rendering engine (optional, recommended)  
 [Marlin](https://github.com/bourgesl/marlin-renderer) is an open source Java2D rendering engine optimized for performance, replacing the standard built into Java. Download is available at [Marlin-renderer releases](https://github.com/bourgesl/marlin-renderer/releases).  
 For JRE version 11 or higher, download jar file _marlin-\*.jar_ from latest _Marlin-renderer \<latest version> for JDK11+_ section's assets.  
-For JRE version 8, download both jar files _marlin-\*.jar_ from latest _Marlin-renderer \<latest version> for JDK8_ section's assets.  
 Windows: Copy downloaded jar file(s) into Mapsforge tile server’s installation folder, e.g. into folder _%programfiles%/MapsforgeSrv_.  
 Linux: Copy downloaded jar file(s) into Mapsforge tile server’s installation folder, e.g. into folder _~/MapsforgeSrv_.  
 
 4.	Tcl/Tk scripting language version 8.6 or higher binaries  
-Windows: Download and install latest stable version of Tcl/Tk, currently 9.0.1. See https://wiki.tcl-lang.org/page/Binary+Distributions for available binary distributions. Recommended Windows binary distribution is from [teclab’s tcltk](https://gitlab.com/teclabat/tcltk/-/packages) Windows repository. Select most recent installation file _tcltk86-9.0.1.\<number>.Win10.nightly.\<date>.tgz_. Unpack zipped tar archive (file extension _.tgz_) into your Tcl/Tk installation folder, e.g. _%programfiles%/Tcl_.  
+Windows: Download and install latest stable version of Tcl/Tk, currently 9.0.1. See https://wiki.tcl-lang.org/page/Binary+Distributions for available binary distributions. Recommended Windows binary distribution is from [teclab’s tcltk](https://gitlab.com/teclabat/tcltk/-/packages) Windows repository. Select most recent installation file _tcltk90-9.0.1.\<number>.Win10.nightly.\<date>.tgz_. Unpack zipped tar archive (file extension _.tgz_) into your Tcl/Tk installation folder, e.g. _%programfiles%/Tcl_.  
 Note: [7-Zip](https://www.7-zip.org) file archiver/extractor is able to unpack _.tgz_ archives.  
 Linux: Install packages _tcl, tcllib, tcl-thread, tk_ and _tklib_ using Linux package manager. Since Tcl script now uses threads, package _tcl-thread_ is required. In addition, package _tklib_ is required for using tooltips.  (Ubuntu: _apt install tcl tcllib tcl-thread tk tklib_)
 
@@ -102,7 +100,7 @@ or associate file extension _.tcl_ to Tcl/Tk window shell’s binary _/usr/bin/w
 
 ### Usage
 
-* After selecting map(s), theme file, theme style, style's overlays etc. in graphical user interface, hit _Start_ button to start tile server. If changing settings while client application is running, a restart of tile server is required to adopt new settings. To restart server, hit _Start_ button again. If client application was caching tiles already loaded with previous settings, it is necessary to force application to clear/flush application's tile cache or to clear tile cache manually and/or to reload tiles.
+* After selecting task(s), map(s), theme file, theme style, style's overlays etc. in graphical user interface, hit _Start_ button to start tile server. If changing settings while client application is running, a restart of tile server is required to adopt new settings. To restart server, hit _Start_ button again. If client application was caching tiles already loaded with previous settings, it is necessary to force application to clear/flush application's tile cache or to clear tile cache manually and/or to reload tiles.
 * Closing graphical user interface also closes tile server. Client application will however keep running but will no longer receive any tiles.
 * Use keyboard keys Ctrl-plus to increase and keyboard keys Ctrl-minus to decrease font size of graphical user interface and/or output console.
 * See output console for tile server’s output.
@@ -157,18 +155,18 @@ Screenshot of Java OpenStreetMap Editor JOSM showing Heidelberg (Germany) old to
 
 for _Imagery_ and _Mini map_:
 
-![Heidelberg](https://user-images.githubusercontent.com/62614244/174278461-7983a101-0aa7-47c5-86b7-4d6f235750c3.jpg)
+![Heidelberg](https://github.com/user-attachments/assets/4ecda2b6-5adf-4019-973a-6ca96c2d7f35)
 
 Mapsforge Tile Server and Hillshading Server have been defined in JOSM preferences as shown below:
 
-![Config](https://user-images.githubusercontent.com/62614244/174278474-2f76c5c2-5295-4088-b038-83730e566432.png)
+![Config](https://github.com/user-attachments/assets/7a6d534b-fa91-4667-8109-bb8795d02ffc)
 
 ### Hints
 
 * Output console  
 While console output of tile server can be informative and helpful to verify what is happening as well as to analyze errors, writing to console costs some performance. Therefore the console should be hidden if not needed. 
 * Built-in world map  
-Since the built-in [Mapsforge world map](https://download.mapsforge.org/maps/world/world.map) only shows the coastline, it only serves as a rough overview. Due to map's low resolution, coastlines show inaccurate at high resolution. Because the Mapsforge renderer prefers land on the world map to sea on the selected detailed local map, it may be advisable to disable the built-in world map when rendering coastal regions at high resolution. In order not to cover an accurate map, the built-in world map has been automatically deactivated at higher zoom levels since tile server version 0.21.3.
+Since the built-in [Mapsforge world map](https://download.mapsforge.org/maps/world/world.map) only shows the coastline, it only serves as a rough overview. Due to map's low resolution, coastlines show inaccurate at high resolution. Because the Mapsforge renderer prefers land on the world map to sea on the selected detailed local map, it may be advisable to disable the built-in world map when rendering coastal regions at high resolution. In order not to cover an accurate map, the built-in world map has been automatically deactivated at higher zoom levels since tile server version 0.21.0.3.
 * Hillshading  
   * When selecting "Hillshading on map", map and hillshading are rendered into one single map. Flat area gets a medium shade of gray, while slopes get a darker or a brighter shade of gray depending on the angle of incidence of light. Thus map has a shade of gray everywhere.  
   
