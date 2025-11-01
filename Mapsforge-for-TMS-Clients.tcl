@@ -25,7 +25,7 @@ if {[encoding system] != "utf-8"} {
 if {![info exists tk_version]} {package require Tk}
 wm withdraw .
 
-set version "2025-10-14"
+set version "2025-11-01"
 set script [file normalize [info script]]
 set title [file tail $script]
 
@@ -331,6 +331,12 @@ if {$tcl_platform(os) == "Windows NT"} {
   error_message [mc e03 $tcl_platform(os)] exit
 }
 
+# Create temporary files folder and delete on exit
+
+file mkdir $tmpdir
+rename ::exit ::quit
+proc exit {args} {catch {file delete -force $::tmpdir}; eval quit $args}
+
 # Restore saved settings from folder ini_folder
 
 if {![info exists ini_folder]} {set ini_folder $env(HOME)/.Mapsforge}
@@ -633,15 +639,15 @@ foreach line [split $result \n] {
   set server_string $data
   set data [split $data .]
   if {[llength $data] != 4} \
-    {error_message [mc e07 "Mapsforge Server" $server_string 0.21.0.0] exit}
+    {error_message [mc e07 "Mapsforge Server" $server_string 0.22.0.0] exit}
   foreach item $data {set server_version [expr 100*$server_version+$item]}
   break
 }
 
 if {$rc || $server_version == 0} \
   {error_message [mc e08 Server [get_shell_command $command] $result] exit}
-if {$server_version < 210000} \
-  {error_message [mc e07 "Mapsforge Server" $server_string 0.21.0.0] exit}
+if {$server_version < 220000} \
+  {error_message [mc e07 "Mapsforge Server" $server_string 0.22.0.0] exit}
 
 # Recursively find files
 
@@ -841,6 +847,7 @@ proc task_name_update {} {
   set ::task.name $v
   set ::task.active $v
   restore_task_settings ${::task.active}
+  if {[process_running srv]} {srv_task_create $v}
 }
 
 proc task_item_toggle {} {
@@ -850,8 +857,10 @@ proc task_item_toggle {} {
   if {$v == "(default)"} return
   if {$i in [$lb curselection]} {
     $lb selection clear $i
+    if {[process_running srv]} {srv_task_delete $v}
   } else {
     $lb selection set $i
+    if {[process_running srv]} {srv_task_create $v}
   }
 }
 
@@ -871,6 +880,7 @@ proc task_item_delete {} {
   file delete $file
   set ::task.active [$lb get active]
   restore_task_settings ${::task.active}
+  if {[process_running srv]} {srv_task_delete $v}
 }
 
 proc task_item_add {} {
@@ -892,6 +902,8 @@ proc task_item_add {} {
     set ::task.name ${::task.active}
     return 0
   }
+  save_task_settings ${::task.active}
+  if {[process_running srv]} {srv_task_create $v}
   return 1
 }
 
@@ -1235,9 +1247,8 @@ proc choose_dem_folder {} {
 
 labelframe .shading.algorithm -labelanchor w -text [mc l83]:
 pack .shading.algorithm -expand 1 -fill x -pady 2
-set list {}
+set list {stdasy simplasy hiresasy}
 if {$server_version >= 230001} {lappend list adaptasy}
-if {$server_version >= 220000} {lappend list stdasy simplasy hiresasy}
 lappend list simple diffuselight
 combobox .shading.algorithm.values -width 12 \
 	-validate key -validatecommand {return 0} \
@@ -2157,7 +2168,8 @@ proc process_running {process} {
 
 proc srv_task_create {task} {
   set file $::ini_folder/task.$task.ini
-  if {![file exists $file]} continue
+  if {![file exists $file]} return
+
   set fd [open $file r]
   while {[gets $fd line] != -1} {
     regexp {^(.*?)=(.*)$} $line "" name value
@@ -2195,7 +2207,7 @@ proc srv_task_create {task} {
 	lappend params themefile [string trim $theme ()]
       } else {
 	lappend params themefile $::themes_folder/$theme
-      } 
+      }
       if {[info exists style.id]} {
 	lappend params style ${style.id}
 	lappend params overlays [join ${overlay.ids} ,]
@@ -2249,7 +2261,6 @@ proc srv_task_create {task} {
     foreach {item value} $params {append data $item=$value\n}
     set md5 [md5 -hex [encoding convertto utf-8 $data]]
     if {[info exists ::md5_$name] && [set ::md5_$name] == $md5} continue
-    if {[info exists ::md5_$subtask] && [set ::md5_$subtask] == $md5} continue
 
     set fd [open $file w]
     puts $fd $data
@@ -2437,16 +2448,11 @@ while {1} {
     save_task_settings ${task.active}
     restore_task_settings (default)
     foreach item {global theme shading tmsclient} {save_${item}_settings}
-    catch {file delete -force $tmpdir}
     exit
   }
   unset action
   if {[selection_ok]} break
 }
-
-# Create server's temporary files folder
-
-file mkdir $tmpdir/tasks
 
 # Create server logging properties
 
@@ -2458,6 +2464,10 @@ puts $fd "log4j.appender.stdout.Target=System.out"
 puts $fd "log4j.appender.stdout.layout=org.apache.log4j.PatternLayout"
 puts $fd "log4j.appender.stdout.layout.ConversionPattern=%d{yyyy-MM-dd HH:mm:ss.SSS} %m%n"
 close $fd
+
+# Create server's temporary files folder
+
+file mkdir $tmpdir/tasks
 
 # Start Mapsforge server
 
@@ -2493,10 +2503,6 @@ srv_stop
 
 # Linux: work-around forcing Tcl to clean up it's background zombie processes
 catch {exec /bin/true}
-
-# Delete temporary files folder
-
-catch {file delete -force $tmpdir}
 
 # Unmap main toplevel window
 
