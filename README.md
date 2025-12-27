@@ -4,16 +4,16 @@ Graphical user interface between Mapsforge tile server and TMS client applicatio
 ### About
 Many map applications do not support local Mapsforge maps out of the box. Prebuilt Mapsforge maps are provided amongst others by [mapsforge.org](http://download.mapsforge.org) and [openandromaps.org](https://www.openandromaps.org). 
 
-Some of these map applications however, amongst these the Java OpenStreetMap Editor JOSM, are able to handle maps provided as tiles by a [Tile Map Service](https://en.wikipedia.org/wiki/Tile_Map_Service) (TMS), which is mainly used by web mapping servers. To make local Mapsforge maps nevertheless available within these applications, a local tile server can be set up to render these Mapsforge maps and to interact with them via TMS protocol. The corresponding tile server is available at this [mapsforgesrv](https://github.com/telemaxx/mapsforgesrv) repository.  
+Some of these map applications however, amongst these the Java OpenStreetMap Editor JOSM, are able to handle maps provided as tiles by a [Tile Map Service](https://en.wikipedia.org/wiki/Tile_Map_Service) (TMS), which is mainly used by web mapping servers. To make local Mapsforge maps nevertheless available within these applications, a local tile server can be set up to render these Mapsforge maps and to interact with them via TMS protocol. The corresponding Mapsforge tile server is available at this [mapsforgesrv](https://github.com/telemaxx/mapsforgesrv) repository.  
 
 ### Graphical user interface
-This project’s intension is to easily let the user interactively and comfortably select the numerous available options of tile server. In addition, option settings as well as position and font size of graphical user interface automatically get saved and restored. Tile server gets started/restarted using these options without need to manually set up any configuration files. 
+This project’s intension is to easily let the user interactively and comfortably select the numerous available options of Mapsforge tile server. In addition, option settings as well as position and font size of graphical user interface automatically get saved and restored. Mapsforge tile server gets started/restarted using these options without need to manually set up any configuration files. 
 
 Graphical user interface is a single script written in _Tcl/Tk_ scripting language and is executable on _Microsoft Windows_ and _Linux_ operating system. Language-neutral script file _Mapsforge-for-TMS-Clients.tcl_ requires an additional user settings file and at least one localized resource file. Additional files must follow _Tcl/Tk_ syntax rules too. 
 
 User settings file is named is named _Mapsforge-for-TMS-Clients.ini_. A template file is provided.
 
-Resource files are named _Mapsforge-for-TMS-Clients.<locale\>_, where _<locale\>_ matches locale’s 2 lowercase letters ISO 639-1 code. English localized resource file _Mapsforge-for-TMS-Clients.en_ and German localized resource file _Mapsforge-for-TMS-Clients.de_ are provided. Script can be easily localized to any other system’s locale by providing a corresponding resource file using English resource file as a template. 
+Resource files are named _Mapsforge-for-TMS-Clients.<locale\>_, where _<locale\>_ matches locale’s 2 lowercase letters ISO 639-1 code. English localized resource file _Mapsforge-for-TMS-Clients.en_, French localized resource file _Mapsforge-for-QMapShack.fr_ and German localized resource file _Mapsforge-for-TMS-Clients.de_ are provided. Script can be easily localized to any other system’s locale by providing a corresponding resource file using English resource file as a template. 
 
 Screenshot of graphical user interface: 
 ![GUI_Windows](https://github.com/user-attachments/assets/0a3e4a05-bdcf-46df-ae1c-6dea582ae223)
@@ -22,14 +22,15 @@ Screenshot of graphical user interface:
 ### Installation
 
 1.	Java runtime environment (JRE) or Java development kit (JDK)  
-JRE version 11 or higher is required. Each JDK contains JRE as subset.  
-Windows: If not yet installed, download and install JRE or JDK, e.g. from [Oracle](https://www.java.com) or [Adoptium](https://adoptium.net/de/temurin/releases).  
+JRE version 11 or higher is required. JRE version 17 or higher is recommended.  
+Each JDK contains JRE as subset.  
+Windows: If not yet installed, download and install JRE or JDK, e.g. from [Oracle](https://www.java.com), [OpenLogic](https://www.openlogic.com/openjdk-downloads) or [Adoptium](https://adoptium.net/de/temurin/releases).  
 Linux: If not yet installed, install JRE or JDK using Linux package manager. (Ubuntu: _apt install openjdk-<version\>-jre_ or _apt install openjdk-<version\>-jdk_ with required or newer _<version\>_)
 
 2.	Mapsforge tile server  
 Open [mapsforgesrv releases](https://github.com/telemaxx/mapsforgesrv/releases).  
 Download most recently released jar file _mapsforgesrv-fatjar.jar_ from _<release\>\_for\_java11_tasks_ assets.  
-Windows: Copy downloaded jar file into Mapsforge tile server’s installation folder, e.g. into folder _%programfiles%/MapsforgeSrv_.  
+Windows: Copy downloaded jar file into Mapsforge tile server’s installation folder, e.g. into folder _%ProgramFiles%/MapsforgeSrv_.  
 Linux: Copy downloaded jar file into Mapsforge tile server’s installation folder, e.g. into folder _~/MapsforgeSrv_.  
 Note: Server version 0.22.0.0 or higher is required.  
 
@@ -39,18 +40,18 @@ For JRE version lower than 17, download jar file _marlin-\*.jar_
 from _Marlin-renderer \<latest version> for JDK11+_ section's assets.  
 For JRE version 17 or higher, download jar file _marlin-\*.jar_  
 from _Marlin-renderer \<latest version> for JDK17+_ section's assets.  
-Windows: Copy downloaded jar file into Mapsforge tile server’s installation folder, e.g. into folder _%programfiles%/MapsforgeSrv_.  
+Windows: Copy downloaded jar file into Mapsforge tile server’s installation folder, e.g. into folder _%ProgramFiles%/MapsforgeSrv_.  
 Linux: Copy downloaded jar file into Mapsforge tile server’s installation folder, e.g. into folder _~/MapsforgeSrv_.  
 
 4.	Tcl/Tk scripting language version 8.6 or higher binaries  
 Windows: Download and install latest stable version of Tcl/Tk, currently 9.0.  
-See https://wiki.tcl-lang.org/page/Binary+Distributions for available binary distributions. Recommended Windows binary distribution is from [teclab’s tcltk](https://gitlab.com/teclabat/tcltk/-/packages) Windows repository. Select most recent installation file _tcltk90-9.0.\<x.y>.Win10.nightly.\<date>.tgz_. Unpack zipped tar archive (file extension _.tgz_) into your Tcl/Tk installation folder, e.g. _%programfiles%/Tcl_.  
+See https://wiki.tcl-lang.org/page/Binary+Distributions for available binary distributions. Recommended Windows binary distribution is from [teclab’s tcltk](https://gitlab.com/teclabat/tcltk/-/packages) Windows repository. Select most recent installation file _tcltk90-9.0.\<x.y>.Win10.nightly.\<date>.tgz_. Unpack zipped tar archive (file extension _.tgz_) into your Tcl/Tk installation folder, e.g. _%ProgramFiles%/Tcl_.  
 Note: [7-Zip](https://www.7-zip.org) file archiver/extractor is able to unpack _.tgz_ archives.   
 Linux: Install packages _tcl, tcllib, tcl-thread, tk_ and _tklib_ using Linux package manager.  
 (Ubuntu: _apt install tcl tcllib tcl-thread tk tklib_)
 
 5.	Mapsforge maps  
-Download Mapsforge maps for example from [openandromaps.org](https://www.openandromaps.org). Each downloaded OpenAndroMaps map archive contains a map file (file extension _.map_). Tile server will render this map file.  
+Download Mapsforge maps for example from [openandromaps.org](https://www.openandromaps.org). Each downloaded OpenAndroMaps map archive contains a map file (file extension _.map_). Mapsforge tile server will render this map file.  
 
 6.	Mapsforge themes  
 Mapsforge themes _Elevate_ and _Elements_ (file extension _.xml_) suitable for OpenAndroMaps are available for download at [openandromaps.org](https://www.openandromaps.org).  
@@ -70,16 +71,16 @@ While 1\" (arc second) resolution DEM data have a significantly higher accuracy 
 
 8.	Mapsforge for TMS Clients graphical user interface script  
 Download language-neutral script file _Mapsforge-for-TMS-Clients.tcl_, user settings file _Mapsforge-for-TMS-Clients.ini_ and at least one localized resource file.  
-Windows: Copy downloaded files into Mapsforge tile server’s installation folder, e.g. into folder _%programfiles%/MapsforgeSrv_.  
+Windows: Copy downloaded files into Mapsforge tile server’s installation folder, e.g. into folder _%ProgramFiles%/MapsforgeSrv_.  
 Linux: Copy downloaded files into Mapsforge tile server’s installation folder, e.g. into folder _~/MapsforgeSrv_.  
 Edit _user-defined script variables settings section_ of user settings file _Mapsforge-for-TMS-Clients.ini_ to match files and folders of your local installation of Java and Mapsforge tile server.  
 Important:  
-Always use character slash “/” as directory separator in script, for Microsoft Windows too!
+Always use character slash “/” as directory separator in _Mapsforge-for-TMS-Clients.ini_ file, for Microsoft Windows too!
 
 ### Script file execution
 
 Windows:  
-Associate file extension _.tcl_ to Tcl/Tk window shell’s binary _wish.exe_. Right-click script file and open file’s properties window. Change data type _.tcl_ to be opened by _Wish application_ e.g. by executable _%programfiles%/Tcl/bin/wish.exe_. Once file extension has been associated, double-click script file to run.
+Associate file extension _.tcl_ to Tcl/Tk window shell’s binary _wish.exe_. Right-click script file and open file’s properties window. Change data type _.tcl_ to be opened by _Wish application_ e.g. by executable _%ProgramFiles%/Tcl/bin/wish.exe_. Once file extension has been associated, double-click script file to run.
 
 Linux:  
 Either run script file from command line by
@@ -99,10 +100,10 @@ or associate file extension _.tcl_ to Tcl/Tk window shell’s binary _/usr/bin/w
 
 ### Usage
 
-* After selecting task(s), map(s), theme file, theme style, style's overlays etc. in graphical user interface, hit _Start_ button to start tile server. If changing settings while client application is running, a restart of tile server is required to adopt new settings. To restart server, hit _Start_ button again. If client application was caching tiles already loaded with previous settings, it is necessary to force application to clear/flush application's tile cache or to clear tile cache manually and/or to reload tiles.
-* Closing graphical user interface also closes tile server. Client application will however keep running but will no longer receive any tiles.
+* After selecting task(s), map(s), theme file, theme style, style's overlays etc. in graphical user interface, hit _Start_ button to start Mapsforge tile server. When changing settings while client application is running, a reload of tile server is required to adopt new settings. To reload server, hit _Start_ button again. If client application was caching tiles already loaded with previous settings, it is necessary to force application to clear/flush application's tile cache or to clear tile cache manually and/or to reload tiles.
+* Closing graphical user interface also closes Mapsforge tile server. Client application will however keep running but will no longer receive any tiles.
 * Use keyboard keys Ctrl-plus to increase and keyboard keys Ctrl-minus to decrease font size of graphical user interface and/or output console.
-* See output console for tile server’s output.
+* See output console for Mapsforge tile server’s output.
 
 ### URLs for tile requests
 
@@ -116,7 +117,7 @@ scheme://address:port/zoom/x/y.format?task=Hillshading
 | URL item | description |
 | -----| ----------- |
 | scheme | protocol either *http* or *https* |
-| address | tile server's IP address |
+| address | Mapsforge tile server's IP address |
 | mport | tcp port to request map tiles |
 | hport | tcp port to request hillshading overlay tiles |
 | port | tcp port to request map and hillshading overlay tiles |
@@ -146,14 +147,14 @@ for _Imagery_ and _Mini map_:
 
 ![Heidelberg](https://github.com/user-attachments/assets/4ecda2b6-5adf-4019-973a-6ca96c2d7f35)
 
-Mapsforge Tile Server and Hillshading Server have been defined in JOSM preferences as shown below:
+Mapsforge Tile Server and Mapsforge Hillshading Server have been defined in JOSM preferences as shown below:
 
 ![Config](https://github.com/user-attachments/assets/7a6d534b-fa91-4667-8109-bb8795d02ffc)
 
 ### Hints
 
 * Output console  
-While console output of tile server can be informative and helpful to verify what is happening as well as to analyze errors, writing to console costs some performance. Therefore the console should be hidden if not needed. 
+While console output of Mapsforge tile server can be informative and helpful to verify what is happening as well as to analyze errors, writing to console costs some performance. Therefore the console should be hidden if not needed. 
 * Built-in world map  
 Since the built-in [Mapsforge world map](https://download.mapsforge.org/maps/world/world.map) only shows the coastline, it only serves as a rough overview. Due to map's low resolution, coastlines show inaccurate at high resolution.  
 In order not to cover an accurate map, the built-in world map has been automatically deactivated at higher zoom levels.    
