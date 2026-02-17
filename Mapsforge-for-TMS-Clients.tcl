@@ -25,7 +25,7 @@ if {[encoding system] != "utf-8"} {
 package require Tk
 wm withdraw .
 
-set version "2026-02-02"
+set version "2026-02-17"
 set script [file normalize [info script]]
 set title [file tail $script]
 
@@ -718,7 +718,7 @@ set task.use [lmap task ${task.set} \
 	{if {$task ni ${task.use}} continue;set task}]
 
 labelframe .task -labelanchor w -text "[mc l02]: " -bd 0
-entry .task.name -width 32 -textvariable task.name \
+entry .task.name -width 24 -textvariable task.name \
 	-takefocus 1 -highlightthickness 0
 bind .task.name <Return> {task_item_add}
 button .task.post -image ArrowDown -command task_list_post
@@ -2110,21 +2110,24 @@ proc process_start {command process} {
     set mark \[[string toupper $process]\]
     cputi "$m51 $mark"
 
-    fconfigure $fd -blocking 0 -buffering full -buffersize 131072
-    fileevent $fd readable "
+    proc fevent {} {uplevel #0 {
       set text {}
-      while {\[gets $fd line\] >= 0} {lappend text \"\\$mark \$line\"}
-      if {\$text != {}} {cputs \[join \$text \\n\]}
-      if {\[eof $fd\]} {
-	cputi \"$m52 \\$mark\"
-	thread::send -async $sid \"
-	  namespace delete $process
-	  set $process.eof 1
-	  set action 0
-	  \"
-	thread::release
-	close $fd
-      }"
+      while {[gets $fd line] >= 0} {lappend text "$mark $line"}
+      if {$text != {}} {cputs [join $text \n]}
+      if {![eof $fd]} return
+      fileevent $fd readable {}
+      cputi "$m52 $mark"
+      thread::send -async $sid "
+	namespace delete $process
+	set $process.eof 1
+	set action 0
+	"
+      close $fd
+      thread::release
+    }}
+
+    fconfigure $fd -blocking 0 -buffering full -buffersize 131072
+    fileevent $fd readable fevent
   }
 }
 
@@ -2135,9 +2138,7 @@ proc process_kill {process} {
   if {![process_running $process]} return
   namespace upvar $process tid tid pid pid
 
-  thread::send $tid {
-    fileevent $fd readable [regsub {m52} [fileevent $fd readable] {m53}]
-  }
+  thread::send $tid {proc fevent {} [regsub m52 [info body fevent] m53]}
 
   if {$::tcl_platform(os) == "Windows NT"} {
     catch {exec TASKKILL /F /PID $pid /T}
@@ -2330,7 +2331,10 @@ proc srv_start {} {
 
   set data terminate=true\n
   append data requestlog-format=
-  if {${::log.requests}} {append data "From %{client}a Get %U%q Status %s Size %O bytes Time %{ms}T ms"}
+  if {${::log.requests}} {
+    append data "From %{remote}a:%{local}p Get %U%q "
+    append data "Status %s Size %O bytes Time %{ms}T ms"
+  }
   append data \n
   if {${::tcp.interface} == "localhost"} {append data host=localhost\n}
   set port [set ::tcp.port]
@@ -2406,9 +2410,7 @@ proc srv_stop {} {
   if {![process_running srv]} return
   namespace upvar srv tid tid port port
 
-  thread::send $tid {
-    fileevent $fd readable [regsub "action" [fileevent $fd readable] "{}"]
-  }
+  thread::send $tid {proc fevent {} [regsub action [info body fevent] "{}"]}
 
   set url http://127.0.0.1:$port/terminate
   if {![catch {::http::geturl $url} token]} {
