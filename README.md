@@ -22,7 +22,7 @@ Screenshot of graphical user interface:
 ### Installation
 
 1.	**Java runtime environment (JRE) or Java development kit (JDK)**  
-JRE version 11 or higher is required. JRE version 17 or higher is recommended.  
+**Note**: JRE version 17 or higher is now required.  
 Each JDK contains JRE as subset.  
 **Windows**: If not yet installed, download and install JRE or JDK, e.g. from [Oracle](https://www.java.com), [OpenLogic](https://www.openlogic.com/openjdk-downloads) or [Adoptium](https://adoptium.net/de/temurin/releases).  
 **Linux**: If not yet installed, install JRE or JDK using Linux package manager.  
@@ -31,23 +31,21 @@ Each JDK contains JRE as subset.
 
 2.	Mapsforge tile server  
 Open [mapsforgesrv releases](https://github.com/telemaxx/mapsforgesrv/releases).  
-Download most recently released jar file _mapsforgesrv-fatjar.jar_ from _<release\>\_for\_java11_tasks_ assets.  
+Download most recently released jar file _mapsforgesrv-fatjar.jar_ from assets.  
 **Windows**: Copy downloaded jar file into Mapsforge tile server’s installation folder, e.g. into folder _%ProgramFiles%/MapsforgeSrv_.  
 **Linux** / **macOS**: Copy downloaded jar file into Mapsforge tile server’s installation folder, e.g. into folder _~/MapsforgeSrv_.  
 **Note**: Server version 0.22.0.0 or higher is required.  
 
 3. **Alternative Marlin rendering engine** (optional, recommended)  
 [Marlin](https://github.com/bourgesl/marlin-renderer) is an open source Java2D rendering engine optimized for performance, replacing the standard built into Java. Download is available at [Marlin-renderer releases](https://github.com/bourgesl/marlin-renderer/releases).  
-For JRE version lower than 17, download jar file _marlin-\*.jar_  
-from _Marlin-renderer \<latest version> for JDK11+_ section's assets.  
 For JRE version 17 or higher, download jar file _marlin-\*.jar_  
 from _Marlin-renderer \<latest version> for JDK17+_ section's assets.  
 **Windows**: Copy downloaded jar file into Mapsforge tile server’s installation folder, e.g. into folder _%ProgramFiles%/MapsforgeSrv_.  
 **Linux** / **macOS**: Copy downloaded jar file into Mapsforge tile server’s installation folder, e.g. into folder _~/MapsforgeSrv_.  
 
 4.	**Tcl/Tk scripting language version 8.6 or higher binaries**  
-**Windows**: Download and install latest stable version of Tcl/Tk, currently 9.0.  
-See https://wiki.tcl-lang.org/page/Binary+Distributions for available binary distributions. A suitable Windows binary distribution is from [Magicsplat](https://sourceforge.net/projects/magicsplat/files/magicsplat-tcl/) repository. Select most recent installation file _tcl-9.0.3-installer-2.0.6-x64.msi_ or newer. Install into your Tcl/Tk installation folder, e.g. _%ProgramFiles%/Tcl_.  
+**Windows**: Download and install latest **stable** version of Tcl/Tk, currently 9.0.  
+See https://wiki.tcl-lang.org/page/Binary+Distributions for available binary distributions. A suitable Windows binary distribution is from [Magicsplat](https://sourceforge.net/projects/magicsplat/files/magicsplat-tcl/) repository. Select most recent installation file _tcl-9.0.4-installer-2.0.7-x64.msi_ or newer. Install into your Tcl/Tk installation folder, e.g. _%ProgramFiles%/Tcl_.  
 **Linux**: Install packages _tcl, tcllib, tcl-thread, tk_, _tklib_, _x11-utils_  and _wmctrl_ using Linux package manager. 
 (Ubuntu: _apt install tcl tcllib tcl-thread tk tklib_ _x11-utils_ _wmctrl_)   
 **macOS**: If not yet installed, install _tcl-tk_ using _Homebrew_ package manager by _brew install tcl-tk_. Unfortunately, _tklib_ containing required package _tooltip_ is not part of _tcl-tk_. Download _tklib0.9_ from [sourceforge.net](https://sourceforge.net/projects/tcllib/files/tklib/0.9) and install into folder _\<root>/Cellar/tcl-tk/\<version>/lib/tklib0.9_.  
